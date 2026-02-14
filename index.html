@@ -6,6 +6,11 @@
   <title>Buffer Solution Tracker</title>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Crimson+Pro:wght@300;400;600&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  
   <style>
     :root {
       --bg-primary: #0a0e1a;
@@ -765,6 +770,11 @@
     <header>
       <h1>Buffer Tracker</h1>
       <p class="subtitle">Laboratory Buffer Solution Management System</p>
+      <div style="margin-top: 1rem; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;">
+        <span id="connectionStatus" style="padding: 0.5rem 1rem; background: var(--accent-success); color: white; border-radius: 20px; display: inline-block;">
+          🟢 Connected to Firebase
+        </span>
+      </div>
     </header>
 
     <div id="notificationsBanner" class="notifications-banner">
@@ -946,6 +956,22 @@
   </div>
 
   <script>
+    // Initialize Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyDBBk34qKMiT1e9NQKHbNeNhI5dJIvYbSk",
+      authDomain: "buffer-tracker.firebaseapp.com",
+      projectId: "buffer-tracker",
+      storageBucket: "buffer-tracker.firebasestorage.app",
+      messagingSenderId: "941818917282",
+      appId: "1:941818917282:web:ef2003c7c56a0a81d942fb",
+      measurementId: "G-KKR2P3P2SF"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const buffersCollection = db.collection('buffers');
+
     let buffers = [];
     let currentFilter = 'all';
     let editingId = null;
@@ -972,67 +998,48 @@
 
     // Initialize app
     async function init() {
-      await loadBuffers();
-      renderBuffers();
-      checkNotifications();
-      setInterval(checkNotifications, 60000); // Check every minute
-    }
-
-    // Load buffers from storage
-    async function loadBuffers() {
-      try {
-        const stored = localStorage.getItem('buffers');
-        if (stored) {
-          buffers = JSON.parse(stored);
-        } else {
-          buffers = [];
-        }
-        console.log('Loaded buffers:', buffers);
-      } catch (error) {
-        console.log('Error loading buffers, starting fresh', error);
+      // Set up real-time listener for buffers
+      buffersCollection.onSnapshot((snapshot) => {
         buffers = [];
-      }
+        snapshot.forEach((doc) => {
+          buffers.push({ id: doc.id, ...doc.data() });
+        });
+        console.log('Loaded buffers from Firebase:', buffers);
+        renderBuffers();
+        checkNotifications();
+      }, (error) => {
+        console.error('Error loading buffers:', error);
+        alert('Failed to connect to database. Please refresh the page.');
+      });
     }
 
-    // Save all buffers to storage
-    async function saveAllBuffers() {
-      try {
-        localStorage.setItem('buffers', JSON.stringify(buffers));
-        return true;
-      } catch (error) {
-        console.error('Error saving buffers:', error);
-        alert('Failed to save buffer. Please try again.');
-        return false;
-      }
-    }
-
-    // Save buffer (updates the buffers array and saves to storage)
+    // Save buffer to Firebase
     async function saveBuffer(buffer) {
       try {
-        const index = buffers.findIndex(b => b.id === buffer.id);
-        if (index >= 0) {
-          buffers[index] = buffer;
+        if (editingId) {
+          // Update existing buffer
+          await buffersCollection.doc(buffer.id).set(buffer);
         } else {
-          buffers.push(buffer);
+          // Add new buffer
+          await buffersCollection.doc(buffer.id).set(buffer);
         }
-        
-        localStorage.setItem('buffers', JSON.stringify(buffers));
-        console.log('Buffer saved successfully');
+        console.log('Buffer saved to Firebase successfully');
         return true;
       } catch (error) {
         console.error('Error saving buffer:', error);
-        alert('Failed to save buffer. Error: ' + error.message);
+        alert('Failed to save buffer: ' + error.message);
         return false;
       }
     }
 
-    // Delete buffer from storage
+    // Delete buffer from Firebase
     async function deleteBuffer(id) {
       try {
-        buffers = buffers.filter(b => b.id !== id);
-        localStorage.setItem('buffers', JSON.stringify(buffers));
+        await buffersCollection.doc(id).delete();
+        console.log('Buffer deleted from Firebase');
       } catch (error) {
         console.error('Error deleting buffer:', error);
+        alert('Failed to delete buffer: ' + error.message);
       }
     }
 
@@ -1231,14 +1238,14 @@
         filteredBuffers.forEach(buffer => {
           generateQRCode(buffer);
         });
-      }, 100);
+      }, 1000); // Increased delay to ensure QRCode library is fully loaded
       
       // Update dashboard stats
       updateDashboard();
     }
 
     // Generate QR code for a buffer
-    function generateQRCode(buffer) {
+    function generateQRCode(buffer, retryCount = 0) {
       const container = document.getElementById(`qr-${buffer.id}`);
       if (!container) return;
       
@@ -1246,9 +1253,13 @@
       
       // Check if QRCode library is loaded
       if (typeof QRCode === 'undefined') {
-        console.error('QRCode library not loaded');
-        container.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 1rem;">QR code library loading...</p>';
-        setTimeout(() => generateQRCode(buffer), 500); // Retry after delay
+        if (retryCount < 10) {
+          console.log('QRCode library not ready, retrying...', retryCount);
+          container.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 1rem; font-size: 0.85rem;">Loading QR code...</p>';
+          setTimeout(() => generateQRCode(buffer, retryCount + 1), 500);
+        } else {
+          container.innerHTML = '<p style="color: var(--accent-danger); text-align: center; padding: 1rem; font-size: 0.85rem;">QR code failed to load. Please refresh the page.</p>';
+        }
         return;
       }
       
@@ -1455,8 +1466,7 @@ Storage: ${buffer.storage}${buffer.location ? '\nLocation: ' + buffer.location :
     // Delete buffer
     async function deleteBufferById(id) {
       await deleteBuffer(id);
-      renderBuffers();
-      checkNotifications();
+      // No need to call renderBuffers() - Firebase listener will update automatically
     }
 
     // Handle form submission
@@ -1516,8 +1526,7 @@ Storage: ${buffer.storage}${buffer.location ? '\nLocation: ' + buffer.location :
       
       if (saved) {
         closeModal();
-        renderBuffers();
-        checkNotifications();
+        // No need to call renderBuffers() - Firebase listener will update automatically
       }
     });
 
