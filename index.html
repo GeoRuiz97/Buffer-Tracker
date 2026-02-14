@@ -981,28 +981,11 @@
     // Load buffers from storage
     async function loadBuffers() {
       try {
-        // Try window.storage first (for Claude.ai artifacts)
-        if (window.storage) {
-          const keys = await window.storage.list('buffer:', false);
-          if (keys && keys.keys && keys.keys.length > 0) {
-            buffers = [];
-            for (const key of keys.keys) {
-              try {
-                const result = await window.storage.get(key, false);
-                if (result && result.value) {
-                  buffers.push(JSON.parse(result.value));
-                }
-              } catch (err) {
-                console.log('Could not load buffer:', key);
-              }
-            }
-          } else {
-            buffers = [];
-          }
+        const stored = localStorage.getItem('buffers');
+        if (stored) {
+          buffers = JSON.parse(stored);
         } else {
-          // Fallback to localStorage
-          const stored = localStorage.getItem('buffers');
-          buffers = stored ? JSON.parse(stored) : [];
+          buffers = [];
         }
         console.log('Loaded buffers:', buffers);
       } catch (error) {
@@ -1014,17 +997,8 @@
     // Save all buffers to storage
     async function saveAllBuffers() {
       try {
-        if (window.storage) {
-          // Save each buffer individually for window.storage
-          for (const buffer of buffers) {
-            await window.storage.set(`buffer:${buffer.id}`, JSON.stringify(buffer), false);
-          }
-          return true;
-        } else {
-          // Use localStorage as fallback
-          localStorage.setItem('buffers', JSON.stringify(buffers));
-          return true;
-        }
+        localStorage.setItem('buffers', JSON.stringify(buffers));
+        return true;
       } catch (error) {
         console.error('Error saving buffers:', error);
         alert('Failed to save buffer. Please try again.');
@@ -1042,11 +1016,7 @@
           buffers.push(buffer);
         }
         
-        if (window.storage) {
-          await window.storage.set(`buffer:${buffer.id}`, JSON.stringify(buffer), false);
-        } else {
-          localStorage.setItem('buffers', JSON.stringify(buffers));
-        }
+        localStorage.setItem('buffers', JSON.stringify(buffers));
         console.log('Buffer saved successfully');
         return true;
       } catch (error) {
@@ -1060,11 +1030,7 @@
     async function deleteBuffer(id) {
       try {
         buffers = buffers.filter(b => b.id !== id);
-        if (window.storage) {
-          await window.storage.delete(`buffer:${id}`, false);
-        } else {
-          localStorage.setItem('buffers', JSON.stringify(buffers));
-        }
+        localStorage.setItem('buffers', JSON.stringify(buffers));
       } catch (error) {
         console.error('Error deleting buffer:', error);
       }
