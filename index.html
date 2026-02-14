@@ -978,38 +978,52 @@
       setInterval(checkNotifications, 60000); // Check every minute
     }
 
-    // Load buffers from server
+    // Load buffers from storage
     async function loadBuffers() {
       try {
-        const response = await fetch('/api/buffers');
-        if (response.ok) {
-          buffers = await response.json();
-          console.log('Loaded buffers from server:', buffers);
+        // Try window.storage first (for Claude.ai artifacts)
+        if (window.storage) {
+          const keys = await window.storage.list('buffer:', false);
+          if (keys && keys.keys && keys.keys.length > 0) {
+            buffers = [];
+            for (const key of keys.keys) {
+              try {
+                const result = await window.storage.get(key, false);
+                if (result && result.value) {
+                  buffers.push(JSON.parse(result.value));
+                }
+              } catch (err) {
+                console.log('Could not load buffer:', key);
+              }
+            }
+          } else {
+            buffers = [];
+          }
         } else {
-          console.error('Failed to load buffers');
-          buffers = [];
+          // Fallback to localStorage
+          const stored = localStorage.getItem('buffers');
+          buffers = stored ? JSON.parse(stored) : [];
         }
+        console.log('Loaded buffers:', buffers);
       } catch (error) {
         console.log('Error loading buffers, starting fresh', error);
         buffers = [];
       }
     }
 
-    // Save all buffers to server
+    // Save all buffers to storage
     async function saveAllBuffers() {
       try {
-        const response = await fetch('/api/buffers', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(buffers)
-        });
-        
-        if (response.ok) {
-          const result = await response.json();
-          console.log('Saved to server:', result);
+        if (window.storage) {
+          // Save each buffer individually for window.storage
+          for (const buffer of buffers) {
+            await window.storage.set(`buffer:${buffer.id}`, JSON.stringify(buffer), false);
+          }
           return true;
         } else {
-          throw new Error('Server save failed');
+          // Use localStorage as fallback
+          localStorage.setItem('buffers', JSON.stringify(buffers));
+          return true;
         }
       } catch (error) {
         console.error('Error saving buffers:', error);
@@ -1018,7 +1032,7 @@
       }
     }
 
-    // Save buffer (updates the buffers array and saves to server)
+    // Save buffer (updates the buffers array and saves to storage)
     async function saveBuffer(buffer) {
       try {
         const index = buffers.findIndex(b => b.id === buffer.id);
@@ -1028,11 +1042,13 @@
           buffers.push(buffer);
         }
         
-        const saved = await saveAllBuffers();
-        if (saved) {
-          console.log('Buffer saved successfully');
+        if (window.storage) {
+          await window.storage.set(`buffer:${buffer.id}`, JSON.stringify(buffer), false);
+        } else {
+          localStorage.setItem('buffers', JSON.stringify(buffers));
         }
-        return saved;
+        console.log('Buffer saved successfully');
+        return true;
       } catch (error) {
         console.error('Error saving buffer:', error);
         alert('Failed to save buffer. Error: ' + error.message);
@@ -1044,7 +1060,11 @@
     async function deleteBuffer(id) {
       try {
         buffers = buffers.filter(b => b.id !== id);
-        await saveAllBuffers();
+        if (window.storage) {
+          await window.storage.delete(`buffer:${id}`, false);
+        } else {
+          localStorage.setItem('buffers', JSON.stringify(buffers));
+        }
       } catch (error) {
         console.error('Error deleting buffer:', error);
       }
