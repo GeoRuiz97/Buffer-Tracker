@@ -985,7 +985,7 @@
     let ingredientCounter = 0;
 
     // Ingredient management functions
-    function addIngredient(name = '', amount = '') {
+    function addIngredient(name = '', amount = '', hdrm = '') {
       const id = ingredientCounter++;
       const container = document.getElementById('ingredientsList');
       
@@ -998,15 +998,20 @@
                class="ingredient-name" 
                placeholder="Ingredient (e.g., NaCl)" 
                value="${name}"
-               style="flex: 1; padding: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-family: 'Crimson Pro', serif;">
+               style="flex: 2; padding: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-family: 'Crimson Pro', serif; font-size: 0.9rem;">
         <input type="text" 
                class="ingredient-amount" 
                placeholder="Amount (e.g., 8.0g)" 
                value="${amount}"
-               style="flex: 1; padding: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-family: 'Crimson Pro', serif;">
+               style="flex: 1; padding: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-family: 'Crimson Pro', serif; font-size: 0.9rem;">
+        <input type="text" 
+               class="ingredient-hdrm" 
+               placeholder="HDRM #" 
+               value="${hdrm}"
+               style="flex: 1; padding: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-family: 'Crimson Pro', serif; font-size: 0.9rem;">
         <button type="button" 
                 onclick="removeIngredient(${id})" 
-                style="padding: 0.5rem 0.75rem; background: var(--accent-danger); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                style="padding: 0.5rem 0.75rem; background: var(--accent-danger); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; flex-shrink: 0;">
           ×
         </button>
       `;
@@ -1026,13 +1031,19 @@
     function updateFormulaField() {
       const names = document.querySelectorAll('.ingredient-name');
       const amounts = document.querySelectorAll('.ingredient-amount');
+      const hdrms = document.querySelectorAll('.ingredient-hdrm');
       const ingredients = [];
       
       names.forEach((nameInput, index) => {
         const name = nameInput.value.trim();
         const amount = amounts[index].value.trim();
+        const hdrm = hdrms[index].value.trim();
         if (name && amount) {
-          ingredients.push(`${name}: ${amount}`);
+          if (hdrm) {
+            ingredients.push(`${name}: ${amount} (HDRM: ${hdrm})`);
+          } else {
+            ingredients.push(`${name}: ${amount}`);
+          }
         }
       });
       
@@ -1046,20 +1057,33 @@
       
       if (!formulaString) return;
       
-      // Parse formula string (format: "NaCl: 8.0g, KCl: 0.2g")
+      // Parse formula string (format: "NaCl: 8.0g (HDRM: 12345), KCl: 0.2g")
       const ingredients = formulaString.split(',').map(s => s.trim());
       
       ingredients.forEach(ingredient => {
         const parts = ingredient.split(':').map(s => s.trim());
         if (parts.length === 2) {
-          addIngredient(parts[0], parts[1]);
+          const name = parts[0];
+          let amount = parts[1];
+          let hdrm = '';
+          
+          // Check if HDRM number exists
+          const hdrmMatch = amount.match(/^(.+?)\s*\(HDRM:\s*(.+?)\)$/);
+          if (hdrmMatch) {
+            amount = hdrmMatch[1].trim();
+            hdrm = hdrmMatch[2].trim();
+          }
+          
+          addIngredient(name, amount, hdrm);
         }
       });
     }
 
     // Add event listeners to update formula when user types
     document.addEventListener('input', (e) => {
-      if (e.target.classList.contains('ingredient-name') || e.target.classList.contains('ingredient-amount')) {
+      if (e.target.classList.contains('ingredient-name') || 
+          e.target.classList.contains('ingredient-amount') || 
+          e.target.classList.contains('ingredient-hdrm')) {
         updateFormulaField();
       }
     });
@@ -1303,9 +1327,9 @@
               </div>
               ` : ''}
               ${buffer.formula ? `
-              <div class="info-row">
-                <span class="info-label">Formula</span>
-                <span class="info-value" style="text-align: left; white-space: pre-wrap; font-size: 0.85rem;">${buffer.formula}</span>
+              <div class="info-row" style="display: block;">
+                <span class="info-label" style="display: block; margin-bottom: 0.5rem;">Formula</span>
+                <span class="info-value" style="display: block; white-space: pre-wrap; font-size: 0.85rem; line-height: 1.6;">${buffer.formula}</span>
               </div>
               ` : ''}
             </div>
