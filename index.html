@@ -853,8 +853,14 @@
         </div>
 
         <div class="form-group">
-          <label for="formula">Formula/Recipe (Weights & Volumes)</label>
-          <textarea id="formula" placeholder="e.g., NaCl: 8.0g, KCl: 0.2g, Na2HPO4: 1.44g, KH2PO4: 0.24g, H2O to 1L" rows="3"></textarea>
+          <label>Formula/Recipe (Weights & Volumes)</label>
+          <div id="ingredientsList" style="display: flex; flex-direction: column; gap: 0.5rem;">
+            <!-- Ingredients will be added here dynamically -->
+          </div>
+          <button type="button" class="btn btn-secondary" onclick="addIngredient()" style="margin-top: 0.5rem; width: 100%;">
+            + Add Ingredient
+          </button>
+          <input type="hidden" id="formula" />
         </div>
 
         <div class="form-row">
@@ -976,6 +982,87 @@
     let currentFilter = 'all';
     let editingId = null;
     let searchQuery = '';
+    let ingredientCounter = 0;
+
+    // Ingredient management functions
+    function addIngredient(name = '', amount = '') {
+      const id = ingredientCounter++;
+      const container = document.getElementById('ingredientsList');
+      
+      const ingredientRow = document.createElement('div');
+      ingredientRow.id = `ingredient-${id}`;
+      ingredientRow.style.cssText = 'display: flex; gap: 0.5rem; align-items: center;';
+      
+      ingredientRow.innerHTML = `
+        <input type="text" 
+               class="ingredient-name" 
+               placeholder="Ingredient (e.g., NaCl)" 
+               value="${name}"
+               style="flex: 1; padding: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-family: 'Crimson Pro', serif;">
+        <input type="text" 
+               class="ingredient-amount" 
+               placeholder="Amount (e.g., 8.0g)" 
+               value="${amount}"
+               style="flex: 1; padding: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-family: 'Crimson Pro', serif;">
+        <button type="button" 
+                onclick="removeIngredient(${id})" 
+                style="padding: 0.5rem 0.75rem; background: var(--accent-danger); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+          ×
+        </button>
+      `;
+      
+      container.appendChild(ingredientRow);
+      updateFormulaField();
+    }
+
+    function removeIngredient(id) {
+      const element = document.getElementById(`ingredient-${id}`);
+      if (element) {
+        element.remove();
+        updateFormulaField();
+      }
+    }
+
+    function updateFormulaField() {
+      const names = document.querySelectorAll('.ingredient-name');
+      const amounts = document.querySelectorAll('.ingredient-amount');
+      const ingredients = [];
+      
+      names.forEach((nameInput, index) => {
+        const name = nameInput.value.trim();
+        const amount = amounts[index].value.trim();
+        if (name && amount) {
+          ingredients.push(`${name}: ${amount}`);
+        }
+      });
+      
+      document.getElementById('formula').value = ingredients.join(', ');
+    }
+
+    function loadIngredientsFromFormula(formulaString) {
+      // Clear existing ingredients
+      document.getElementById('ingredientsList').innerHTML = '';
+      ingredientCounter = 0;
+      
+      if (!formulaString) return;
+      
+      // Parse formula string (format: "NaCl: 8.0g, KCl: 0.2g")
+      const ingredients = formulaString.split(',').map(s => s.trim());
+      
+      ingredients.forEach(ingredient => {
+        const parts = ingredient.split(':').map(s => s.trim());
+        if (parts.length === 2) {
+          addIngredient(parts[0], parts[1]);
+        }
+      });
+    }
+
+    // Add event listeners to update formula when user types
+    document.addEventListener('input', (e) => {
+      if (e.target.classList.contains('ingredient-name') || e.target.classList.contains('ingredient-amount')) {
+        updateFormulaField();
+      }
+    });
 
     // Generate date-based lot number
     function generateLotNumber(date) {
@@ -1351,7 +1438,10 @@ Storage: ${buffer.storage}${buffer.location ? '\nLocation: ' + buffer.location :
       document.getElementById('modalTitle').textContent = 'Duplicate Buffer Solution';
       document.getElementById('bufferName').value = buffer.name + ' (Copy)';
       document.getElementById('composition').value = buffer.composition || '';
-      document.getElementById('formula').value = buffer.formula || '';
+      
+      // Load ingredients from formula
+      loadIngredientsFromFormula(buffer.formula || '');
+      
       document.getElementById('ph').value = buffer.ph || '';
       document.getElementById('concentration').value = buffer.concentration || '';
       document.getElementById('volume').value = buffer.volume;
@@ -1378,6 +1468,11 @@ Storage: ${buffer.storage}${buffer.location ? '\nLocation: ' + buffer.location :
       document.getElementById('modalTitle').textContent = 'Add Buffer Solution';
       document.getElementById('bufferForm').reset();
       document.getElementById('lotNumber').value = 'Select date prepared first';
+      
+      // Clear ingredients list
+      document.getElementById('ingredientsList').innerHTML = '';
+      ingredientCounter = 0;
+      
       toggleExpirationFields();
       document.getElementById('bufferModal').classList.add('show');
     }
@@ -1411,7 +1506,10 @@ Storage: ${buffer.storage}${buffer.location ? '\nLocation: ' + buffer.location :
       document.getElementById('bufferName').value = buffer.name;
       document.getElementById('lotNumber').value = buffer.lotNumber;
       document.getElementById('composition').value = buffer.composition || '';
-      document.getElementById('formula').value = buffer.formula || '';
+      
+      // Load ingredients from formula
+      loadIngredientsFromFormula(buffer.formula || '');
+      
       document.getElementById('ph').value = buffer.ph || '';
       document.getElementById('concentration').value = buffer.concentration || '';
       document.getElementById('volume').value = buffer.volume;
