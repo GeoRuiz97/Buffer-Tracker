@@ -6,6 +6,7 @@
   <title>Buffer Solution Tracker</title>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Crimson+Pro:wght@300;400;600&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -1337,6 +1338,7 @@
             <div class="buffer-actions">
               <button class="btn btn-secondary btn-small" onclick="duplicateBuffer('${buffer.id}')">Copy</button>
               <button class="btn btn-secondary btn-small" onclick="downloadQR('${buffer.id}')">QR</button>
+              <button class="btn btn-secondary btn-small" onclick="generateBatchRecord('${buffer.id}')">Batch Record</button>
               <button class="btn btn-secondary btn-small" onclick="editBuffer('${buffer.id}')">Edit</button>
               <button class="btn btn-secondary btn-small" onclick="confirmDelete('${buffer.id}')">Delete</button>
             </div>
@@ -1401,7 +1403,7 @@ Exp: ${(() => {
   const [year, month, day] = buffer.expirationDate.split('-');
   return new Date(year, month - 1, day).toLocaleDateString('en-US', {month: '2-digit', day: '2-digit', year: '2-digit'});
 })()}
-Storage: ${buffer.storage}${buffer.location ? '\nLocation: ' + buffer.location : ''}`;
+Storage: ${buffer.storage}${buffer.location ? '\nLocation: ' + buffer.location : ''}${buffer.formula ? '\nFormula: ' + buffer.formula : ''}`;
       
       try {
         new QRCode(container, {
@@ -1432,6 +1434,196 @@ Storage: ${buffer.storage}${buffer.location ? '\nLocation: ' + buffer.location :
         link.href = canvas.toDataURL();
         link.click();
       }
+    }
+
+    // Generate professional batch record PDF
+    function generateBatchRecord(bufferId) {
+      const buffer = buffers.find(b => b.id === bufferId);
+      if (!buffer) return;
+      
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      
+      const pageWidth = 210; // A4 width in mm
+      const margin = 20;
+      const contentWidth = pageWidth - (margin * 2);
+      let yPos = 15;
+      
+      // Header - R&D Use Only
+      doc.setFillColor(220, 220, 220);
+      doc.rect(0, 0, pageWidth, 25, 'F');
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('RESEARCH AND DEVELOPMENT USE ONLY', pageWidth / 2, 10, { align: 'center' });
+      doc.setFontSize(8);
+      doc.text('NOT FOR CLINICAL OR DIAGNOSTIC USE', pageWidth / 2, 15, { align: 'center' });
+      
+      yPos = 35;
+      
+      // Title
+      doc.setFontSize(18);
+      doc.setFont('helvetica', 'bold');
+      doc.text('BUFFER PREPARATION BATCH RECORD', pageWidth / 2, yPos, { align: 'center' });
+      
+      yPos += 15;
+      
+      // Lot Number Box
+      doc.setFillColor(240, 240, 240);
+      doc.rect(margin, yPos, contentWidth, 12, 'F');
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('LOT NUMBER: ' + buffer.lotNumber, pageWidth / 2, yPos + 8, { align: 'center' });
+      
+      yPos += 20;
+      
+      // Buffer Information Section
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('BUFFER INFORMATION', margin, yPos);
+      yPos += 7;
+      
+      // Draw table
+      const drawRow = (label, value, isBold = false) => {
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text(label + ':', margin + 2, yPos);
+        doc.setFont('helvetica', isBold ? 'bold' : 'normal');
+        const valueText = String(value || 'N/A');
+        doc.text(valueText, margin + 50, yPos);
+        doc.rect(margin, yPos - 5, contentWidth, 7);
+        yPos += 7;
+      };
+      
+      doc.setDrawColor(0);
+      doc.setLineWidth(0.5);
+      
+      drawRow('Buffer Name', buffer.name, true);
+      drawRow('Composition', buffer.composition || 'See formula below');
+      drawRow('Concentration', buffer.concentration || 'N/A');
+      drawRow('pH', buffer.ph || 'N/A');
+      drawRow('Volume', buffer.volume + ' ' + buffer.volumeUnit);
+      drawRow('Sterilization', buffer.sterilization || 'Not sterilized');
+      
+      yPos += 5;
+      
+      // Formula Section
+      if (buffer.formula) {
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('FORMULA / RECIPE', margin, yPos);
+        yPos += 7;
+        
+        // Parse ingredients
+        const ingredients = buffer.formula.split(',').map(s => s.trim());
+        
+        // Table header
+        doc.setFillColor(200, 200, 200);
+        doc.rect(margin, yPos - 5, contentWidth, 7, 'F');
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Ingredient', margin + 2, yPos);
+        doc.text('Amount', margin + 70, yPos);
+        doc.text('HDRM #', margin + 110, yPos);
+        doc.text('✓', margin + 150, yPos);
+        yPos += 7;
+        
+        // Ingredient rows
+        doc.setFont('helvetica', 'normal');
+        ingredients.forEach((ingredient) => {
+          const hdrmMatch = ingredient.match(/^(.+?):\s*(.+?)\s*\(HDRM:\s*(.+?)\)$/);
+          if (hdrmMatch) {
+            doc.text(hdrmMatch[1], margin + 2, yPos);
+            doc.text(hdrmMatch[2], margin + 70, yPos);
+            doc.text(hdrmMatch[3], margin + 110, yPos);
+          } else {
+            const parts = ingredient.split(':').map(s => s.trim());
+            if (parts.length === 2) {
+              doc.text(parts[0], margin + 2, yPos);
+              doc.text(parts[1], margin + 70, yPos);
+              doc.text('N/A', margin + 110, yPos);
+            }
+          }
+          doc.rect(margin, yPos - 5, contentWidth, 7);
+          yPos += 7;
+        });
+        
+        yPos += 5;
+      }
+      
+      // Preparation Details
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('PREPARATION DETAILS', margin, yPos);
+      yPos += 7;
+      
+      const prepDate = (() => {
+        const [year, month, day] = buffer.datePrepared.split('-');
+        return new Date(year, month - 1, day).toLocaleDateString();
+      })();
+      
+      const expDate = (() => {
+        const [year, month, day] = buffer.expirationDate.split('-');
+        return new Date(year, month - 1, day).toLocaleDateString();
+      })();
+      
+      drawRow('Prepared By', buffer.preparedBy);
+      drawRow('Date Prepared', prepDate);
+      drawRow('Expiration Date', expDate);
+      drawRow('Storage Condition', buffer.storage);
+      drawRow('Physical Location', buffer.location || 'N/A');
+      
+      yPos += 5;
+      
+      // Quality Control Section
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('QUALITY CONTROL', margin, yPos);
+      yPos += 7;
+      
+      // QC Checkboxes
+      const addCheckbox = (label) => {
+        doc.rect(margin + 2, yPos - 4, 4, 4);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text(label, margin + 8, yPos);
+        yPos += 7;
+      };
+      
+      addCheckbox('☐ pH verified (if applicable)');
+      addCheckbox('☐ Volume verified');
+      addCheckbox('☐ Sterilization completed (if required)');
+      addCheckbox('☐ Label applied with correct lot number');
+      addCheckbox('☐ Stored at correct temperature');
+      
+      yPos += 5;
+      
+      // Signature Section
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('VERIFICATION & APPROVAL', margin, yPos);
+      yPos += 10;
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Prepared by: ________________________', margin, yPos);
+      doc.text('Date: __________', margin + 120, yPos);
+      yPos += 10;
+      
+      doc.text('Verified by: ________________________', margin, yPos);
+      doc.text('Date: __________', margin + 120, yPos);
+      
+      // Footer - R&D Use Only
+      const footerY = 280;
+      doc.setFillColor(220, 220, 220);
+      doc.rect(0, footerY, pageWidth, 17, 'F');
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('RESEARCH AND DEVELOPMENT USE ONLY', pageWidth / 2, footerY + 7, { align: 'center' });
+      doc.setFontSize(8);
+      doc.text('Generated: ' + new Date().toLocaleString(), pageWidth / 2, footerY + 12, { align: 'center' });
+      
+      // Save PDF
+      doc.save(`Batch_Record_${buffer.lotNumber}.pdf`);
     }
 
     // Filter buffers
