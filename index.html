@@ -1376,36 +1376,41 @@
         return;
       }
       
-      const daysRemaining = getDaysUntilExpiration(buffer.expirationDate);
-      const status = getBufferStatus(buffer);
-      
-      let statusText = '';
-      if (status === 'expired') {
-        statusText = 'EXPIRED - DO NOT USE';
-      } else if (status === 'expiring-soon') {
-        statusText = `EXPIRING: ${daysRemaining}d left`;
-      } else {
-        statusText = `ACTIVE: ${daysRemaining}d left`;
-      }
-      
-      // Create compact text format for QR code - only essential info
-      const qrText = `${buffer.name}
-LOT: ${buffer.lotNumber}
+      try {
+        const daysRemaining = getDaysUntilExpiration(buffer.expirationDate);
+        const status = getBufferStatus(buffer);
+        
+        let statusText = '';
+        if (status === 'expired') {
+          statusText = 'EXPIRED - DO NOT USE';
+        } else if (status === 'expiring-soon') {
+          statusText = `EXPIRING: ${daysRemaining}d left`;
+        } else {
+          statusText = `ACTIVE: ${daysRemaining}d left`;
+        }
+        
+        // Safe date formatting
+        const formatDate = (dateStr) => {
+          try {
+            if (!dateStr) return 'N/A';
+            const [year, month, day] = dateStr.split('-');
+            return new Date(year, month - 1, day).toLocaleDateString('en-US', {month: '2-digit', day: '2-digit', year: '2-digit'});
+          } catch (e) {
+            return dateStr;
+          }
+        };
+        
+        // Create compact text format for QR code - only essential info
+        const qrText = `${buffer.name || 'Unknown Buffer'}
+LOT: ${buffer.lotNumber || 'N/A'}
 ${statusText}
 
-Vol: ${buffer.volume}${buffer.volumeUnit}${buffer.concentration ? ' | ' + buffer.concentration : ''}${buffer.ph ? ' | pH ' + buffer.ph : ''}
-By: ${buffer.preparedBy}
-Made: ${(() => {
-  const [year, month, day] = buffer.datePrepared.split('-');
-  return new Date(year, month - 1, day).toLocaleDateString('en-US', {month: '2-digit', day: '2-digit', year: '2-digit'});
-})()}
-Exp: ${(() => {
-  const [year, month, day] = buffer.expirationDate.split('-');
-  return new Date(year, month - 1, day).toLocaleDateString('en-US', {month: '2-digit', day: '2-digit', year: '2-digit'});
-})()}
-Storage: ${buffer.storage}${buffer.location ? '\nLocation: ' + buffer.location : ''}${buffer.formula ? '\nFormula: ' + buffer.formula : ''}`;
-      
-      try {
+Vol: ${buffer.volume || '?'}${buffer.volumeUnit || ''}${buffer.concentration ? ' | ' + buffer.concentration : ''}${buffer.ph ? ' | pH ' + buffer.ph : ''}
+By: ${buffer.preparedBy || 'Unknown'}
+Made: ${formatDate(buffer.datePrepared)}
+Exp: ${formatDate(buffer.expirationDate)}
+Storage: ${buffer.storage || 'N/A'}${buffer.location ? '\nLocation: ' + buffer.location : ''}${buffer.formula ? '\nFormula: ' + buffer.formula : ''}`;
+        
         new QRCode(container, {
           text: qrText,
           width: 150,
@@ -1415,8 +1420,8 @@ Storage: ${buffer.storage}${buffer.location ? '\nLocation: ' + buffer.location :
           correctLevel: QRCode.CorrectLevel.L // Low error correction to fit more data
         });
       } catch (error) {
-        console.error('Error generating QR code:', error);
-        container.innerHTML = '<p style="color: var(--accent-danger); text-align: center; padding: 1rem;">Error generating QR code</p>';
+        console.error('Error generating QR code:', error, buffer);
+        container.innerHTML = '<p style="color: var(--accent-danger); text-align: center; padding: 1rem; font-size: 0.85rem;">Error generating QR code</p>';
       }
     }
 
@@ -1573,44 +1578,6 @@ Storage: ${buffer.storage}${buffer.location ? '\nLocation: ' + buffer.location :
       drawRow('Physical Location', buffer.location || 'N/A');
       
       yPos += 5;
-      
-      // Quality Control Section
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.text('QUALITY CONTROL', margin, yPos);
-      yPos += 7;
-      
-      // QC Checkboxes
-      const addCheckbox = (label) => {
-        doc.rect(margin + 2, yPos - 4, 4, 4);
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text(label, margin + 8, yPos);
-        yPos += 7;
-      };
-      
-      addCheckbox('☐ pH verified (if applicable)');
-      addCheckbox('☐ Volume verified');
-      addCheckbox('☐ Sterilization completed (if required)');
-      addCheckbox('☐ Label applied with correct lot number');
-      addCheckbox('☐ Stored at correct temperature');
-      
-      yPos += 5;
-      
-      // Signature Section
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.text('VERIFICATION & APPROVAL', margin, yPos);
-      yPos += 10;
-      
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.text('Prepared by: ________________________', margin, yPos);
-      doc.text('Date: __________', margin + 120, yPos);
-      yPos += 10;
-      
-      doc.text('Verified by: ________________________', margin, yPos);
-      doc.text('Date: __________', margin + 120, yPos);
       
       // Footer - R&D Use Only
       const footerY = 280;
