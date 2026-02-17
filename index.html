@@ -381,6 +381,8 @@
       padding: 0.5rem 1rem;
       font-size: 0.8rem;
       flex: 1;
+      min-width: 70px;
+      text-align: center;
     }
 
     .modal {
@@ -601,11 +603,16 @@
       background: white;
       border-radius: 8px;
       margin-top: 1rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
 
     .qr-code-container canvas {
       max-width: 100%;
       height: auto;
+      margin: 0 auto;
+    }
     }
 
     .lot-number {
@@ -1344,9 +1351,33 @@
               </div>
               ` : ''}
               ${buffer.formula ? `
-              <div class="info-row" style="display: block;">
-                <span class="info-label" style="display: block; margin-bottom: 0.5rem;">Formula</span>
-                <span class="info-value" style="display: block; white-space: pre-wrap; font-size: 0.85rem; line-height: 1.6;">${buffer.formula}</span>
+              <div class="info-row" style="display: block; padding: 0.75rem; background: var(--bg-secondary); border-radius: 8px;">
+                <span class="info-label" style="display: block; margin-bottom: 0.75rem; font-size: 0.85rem;">Formula/Recipe</span>
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem;">
+                  <thead>
+                    <tr style="border-bottom: 1px solid var(--border);">
+                      <th style="text-align: left; padding: 0.4rem; color: var(--text-muted); font-weight: 600; font-family: 'JetBrains Mono', monospace;">Ingredient</th>
+                      <th style="text-align: left; padding: 0.4rem; color: var(--text-muted); font-weight: 600; font-family: 'JetBrains Mono', monospace;">Amount</th>
+                      <th style="text-align: left; padding: 0.4rem; color: var(--text-muted); font-weight: 600; font-family: 'JetBrains Mono', monospace;">HDRM</th>
+                      <th style="text-align: left; padding: 0.4rem; color: var(--text-muted); font-weight: 600; font-family: 'JetBrains Mono', monospace;">Lot</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${buffer.formula.split(',').map(ing => {
+                      const nameMatch = ing.match(/^([^:]+):/);
+                      const amountMatch = ing.match(/:\s*([^(]+)/);
+                      const hdrmMatch = ing.match(/\\(HDRM:\\s*([^)]+)\\)/);
+                      const lotMatch = ing.match(/\\(Lot:\\s*([^)]+)\\)/);
+                      
+                      return `<tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                        <td style="padding: 0.4rem; color: var(--text-primary);">${nameMatch ? nameMatch[1].trim() : 'Unknown'}</td>
+                        <td style="padding: 0.4rem; color: var(--text-primary);">${amountMatch ? amountMatch[1].trim() : 'N/A'}</td>
+                        <td style="padding: 0.4rem; color: var(--text-secondary); font-size: 0.75rem;">${hdrmMatch ? hdrmMatch[1].trim() : '-'}</td>
+                        <td style="padding: 0.4rem; color: var(--text-secondary); font-size: 0.75rem;">${lotMatch ? lotMatch[1].trim() : '-'}</td>
+                      </tr>`;
+                    }).join('')}
+                  </tbody>
+                </table>
               </div>
               ` : ''}
             </div>
@@ -1354,7 +1385,7 @@
             <div class="buffer-actions">
               <button class="btn btn-secondary btn-small" onclick="duplicateBuffer('${buffer.id}')">Copy</button>
               <button class="btn btn-secondary btn-small" onclick="downloadQR('${buffer.id}')">QR</button>
-              <button class="btn btn-secondary btn-small" onclick="generateBatchRecord('${buffer.id}')">Batch Record</button>
+              <button class="btn btn-secondary btn-small" onclick="generateBatchRecord('${buffer.id}')">PDF</button>
               <button class="btn btn-secondary btn-small" onclick="editBuffer('${buffer.id}')">Edit</button>
               <button class="btn btn-secondary btn-small" onclick="confirmDelete('${buffer.id}')">Delete</button>
             </div>
