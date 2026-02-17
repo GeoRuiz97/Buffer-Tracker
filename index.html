@@ -819,6 +819,7 @@
         <button class="filter-tab" onclick="filterBuffers('active')">Active</button>
         <button class="filter-tab" onclick="filterBuffers('expiring')">Expiring Soon</button>
         <button class="filter-tab" onclick="filterBuffers('expired')">Expired</button>
+        <button class="filter-tab" onclick="filterBuffers('archived')">Archived</button>
       </div>
     </div>
 
@@ -1199,12 +1200,15 @@
 
     // Check for notifications
     function checkNotifications() {
+      // Only check non-archived buffers
       const expiringBuffers = buffers.filter(buffer => {
+        if (buffer.archived) return false;
         const daysRemaining = getDaysUntilExpiration(buffer.expirationDate);
         return daysRemaining >= 0 && daysRemaining <= 2;
       });
 
       const expiredBuffers = buffers.filter(buffer => {
+        if (buffer.archived) return false;
         const daysRemaining = getDaysUntilExpiration(buffer.expirationDate);
         return daysRemaining < 0;
       });
@@ -1236,10 +1240,13 @@
 
     // Update dashboard statistics
     function updateDashboard() {
-      const total = buffers.length;
-      const active = buffers.filter(b => getBufferStatus(b) === 'active').length;
-      const expiring = buffers.filter(b => getBufferStatus(b) === 'expiring-soon').length;
-      const expired = buffers.filter(b => getBufferStatus(b) === 'expired').length;
+      // Only count non-archived buffers
+      const nonArchivedBuffers = buffers.filter(b => !b.archived);
+      
+      const total = nonArchivedBuffers.length;
+      const active = nonArchivedBuffers.filter(b => getBufferStatus(b) === 'active').length;
+      const expiring = nonArchivedBuffers.filter(b => getBufferStatus(b) === 'expiring-soon').length;
+      const expired = nonArchivedBuffers.filter(b => getBufferStatus(b) === 'expired').length;
       
       document.getElementById('totalBuffers').textContent = total;
       document.getElementById('activeBuffers').textContent = active;
@@ -1264,9 +1271,16 @@
         );
       }
       
-      // Apply status filter
-      if (currentFilter !== 'all') {
-        // Map 'expiring' to 'expiring-soon' to match getBufferStatus return value
+      // Apply archive/status filter
+      if (currentFilter === 'archived') {
+        // Show only archived buffers
+        filteredBuffers = filteredBuffers.filter(buffer => buffer.archived === true);
+      } else if (currentFilter === 'all') {
+        // Show only non-archived buffers
+        filteredBuffers = filteredBuffers.filter(buffer => !buffer.archived);
+      } else {
+        // For status filters (active, expiring, expired), exclude archived AND filter by status
+        filteredBuffers = filteredBuffers.filter(buffer => !buffer.archived);
         const filterStatus = currentFilter === 'expiring' ? 'expiring-soon' : currentFilter;
         filteredBuffers = filteredBuffers.filter(buffer => getBufferStatus(buffer) === filterStatus);
       }
@@ -1383,11 +1397,17 @@
             </div>
             <div class="qr-code-container" id="qr-${buffer.id}"></div>
             <div class="buffer-actions">
-              <button class="btn btn-secondary btn-small" onclick="duplicateBuffer('${buffer.id}')">Copy</button>
-              <button class="btn btn-secondary btn-small" onclick="downloadQR('${buffer.id}')">QR</button>
-              <button class="btn btn-secondary btn-small" onclick="generateBatchRecord('${buffer.id}')">PDF</button>
-              <button class="btn btn-secondary btn-small" onclick="editBuffer('${buffer.id}')">Edit</button>
-              <button class="btn btn-secondary btn-small" onclick="confirmDelete('${buffer.id}')">Delete</button>
+              ${!buffer.archived ? `
+                <button class="btn btn-secondary btn-small" onclick="duplicateBuffer('${buffer.id}')">Copy</button>
+                <button class="btn btn-secondary btn-small" onclick="downloadQR('${buffer.id}')">QR</button>
+                <button class="btn btn-secondary btn-small" onclick="generateBatchRecord('${buffer.id}')">PDF</button>
+                <button class="btn btn-secondary btn-small" onclick="editBuffer('${buffer.id}')">Edit</button>
+                <button class="btn btn-secondary btn-small" onclick="archiveBuffer('${buffer.id}')">Archive</button>
+                <button class="btn btn-secondary btn-small" onclick="confirmDelete('${buffer.id}')">Delete</button>
+              ` : `
+                <button class="btn btn-secondary btn-small" onclick="restoreBuffer('${buffer.id}')">Restore</button>
+                <button class="btn btn-secondary btn-small" onclick="confirmDelete('${buffer.id}')">Delete</button>
+              `}
             </div>
           </div>
         `;
@@ -1794,6 +1814,38 @@ Storage: ${buffer.storage || 'N/A'}${buffer.location ? '\nLoc: ' + buffer.locati
     async function deleteBufferById(id) {
       await deleteBuffer(id);
       // No need to call renderBuffers() - Firebase listener will update automatically
+    }
+
+    // Archive buffer
+    async function archiveBuffer(id) {
+      const buffer = buffers.find(b => b.id === id);
+      if (!buffer) return;
+      
+      buffer.archived = true;
+      
+      try {
+        await buffersCollection.doc(id).update({ archived: true });
+        console.log('Buffer archived successfully');
+      } catch (error) {
+        console.error('Error archiving buffer:', error);
+        alert('Failed to archive buffer: ' + error.message);
+      }
+    }
+
+    // Restore buffer from archive
+    async function restoreBuffer(id) {
+      const buffer = buffers.find(b => b.id === id);
+      if (!buffer) return;
+      
+      buffer.archived = false;
+      
+      try {
+        await buffersCollection.doc(id).update({ archived: false });
+        console.log('Buffer restored successfully');
+      } catch (error) {
+        console.error('Error restoring buffer:', error);
+        alert('Failed to restore buffer: ' + error.message);
+      }
     }
 
     // Handle form submission
