@@ -986,7 +986,7 @@
     let ingredientCounter = 0;
 
     // Ingredient management functions
-    function addIngredient(name = '', amount = '', hdrm = '') {
+    function addIngredient(name = '', amount = '', hdrm = '', lot = '') {
       const id = ingredientCounter++;
       const container = document.getElementById('ingredientsList');
       
@@ -1009,6 +1009,11 @@
                class="ingredient-hdrm" 
                placeholder="HDRM #" 
                value="${hdrm}"
+               style="flex: 1; padding: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-family: 'Crimson Pro', serif; font-size: 0.9rem;">
+        <input type="text" 
+               class="ingredient-lot" 
+               placeholder="Lot #" 
+               value="${lot}"
                style="flex: 1; padding: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-family: 'Crimson Pro', serif; font-size: 0.9rem;">
         <button type="button" 
                 onclick="removeIngredient(${id})" 
@@ -1033,18 +1038,19 @@
       const names = document.querySelectorAll('.ingredient-name');
       const amounts = document.querySelectorAll('.ingredient-amount');
       const hdrms = document.querySelectorAll('.ingredient-hdrm');
+      const lots = document.querySelectorAll('.ingredient-lot');
       const ingredients = [];
       
       names.forEach((nameInput, index) => {
         const name = nameInput.value.trim();
         const amount = amounts[index].value.trim();
         const hdrm = hdrms[index].value.trim();
+        const lot = lots[index].value.trim();
         if (name && amount) {
-          if (hdrm) {
-            ingredients.push(`${name}: ${amount} (HDRM: ${hdrm})`);
-          } else {
-            ingredients.push(`${name}: ${amount}`);
-          }
+          let ingredientStr = `${name}: ${amount}`;
+          if (hdrm) ingredientStr += ` (HDRM: ${hdrm})`;
+          if (lot) ingredientStr += ` (Lot: ${lot})`;
+          ingredients.push(ingredientStr);
         }
       });
       
@@ -1058,7 +1064,7 @@
       
       if (!formulaString) return;
       
-      // Parse formula string (format: "NaCl: 8.0g (HDRM: 12345), KCl: 0.2g")
+      // Parse formula string (format: "NaCl: 8.0g (HDRM: 12345) (Lot: ABC123)")
       const ingredients = formulaString.split(',').map(s => s.trim());
       
       ingredients.forEach(ingredient => {
@@ -1067,15 +1073,24 @@
           const name = parts[0];
           let amount = parts[1];
           let hdrm = '';
+          let lot = '';
           
-          // Check if HDRM number exists
-          const hdrmMatch = amount.match(/^(.+?)\s*\(HDRM:\s*(.+?)\)$/);
+          // Extract HDRM number if exists
+          const hdrmMatch = amount.match(/\(HDRM:\s*([^)]+)\)/);
           if (hdrmMatch) {
-            amount = hdrmMatch[1].trim();
-            hdrm = hdrmMatch[2].trim();
+            hdrm = hdrmMatch[1].trim();
+            amount = amount.replace(/\s*\(HDRM:\s*[^)]+\)/, '');
           }
           
-          addIngredient(name, amount, hdrm);
+          // Extract Lot number if exists
+          const lotMatch = amount.match(/\(Lot:\s*([^)]+)\)/);
+          if (lotMatch) {
+            lot = lotMatch[1].trim();
+            amount = amount.replace(/\s*\(Lot:\s*[^)]+\)/, '');
+          }
+          
+          amount = amount.trim();
+          addIngredient(name, amount, hdrm, lot);
         }
       });
     }
@@ -1084,7 +1099,8 @@
     document.addEventListener('input', (e) => {
       if (e.target.classList.contains('ingredient-name') || 
           e.target.classList.contains('ingredient-amount') || 
-          e.target.classList.contains('ingredient-hdrm')) {
+          e.target.classList.contains('ingredient-hdrm') ||
+          e.target.classList.contains('ingredient-lot')) {
         updateFormulaField();
       }
     });
@@ -1526,26 +1542,26 @@ Storage: ${buffer.storage || 'N/A'}${buffer.location ? '\nLoc: ' + buffer.locati
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
         doc.text('Ingredient', margin + 2, yPos);
-        doc.text('Amount', margin + 70, yPos);
-        doc.text('HDRM #', margin + 110, yPos);
-        doc.text('✓', margin + 150, yPos);
+        doc.text('Amount', margin + 60, yPos);
+        doc.text('HDRM #', margin + 95, yPos);
+        doc.text('Lot #', margin + 130, yPos);
+        doc.text('✓', margin + 160, yPos);
         yPos += 7;
         
         // Ingredient rows
         doc.setFont('helvetica', 'normal');
         ingredients.forEach((ingredient) => {
-          const hdrmMatch = ingredient.match(/^(.+?):\s*(.+?)\s*\(HDRM:\s*(.+?)\)$/);
-          if (hdrmMatch) {
-            doc.text(hdrmMatch[1], margin + 2, yPos);
-            doc.text(hdrmMatch[2], margin + 70, yPos);
-            doc.text(hdrmMatch[3], margin + 110, yPos);
-          } else {
-            const parts = ingredient.split(':').map(s => s.trim());
-            if (parts.length === 2) {
-              doc.text(parts[0], margin + 2, yPos);
-              doc.text(parts[1], margin + 70, yPos);
-              doc.text('N/A', margin + 110, yPos);
-            }
+          // Parse ingredient with optional HDRM and Lot
+          const nameMatch = ingredient.match(/^([^:]+):/);
+          const amountMatch = ingredient.match(/:\s*([^(]+)/);
+          const hdrmMatch = ingredient.match(/\(HDRM:\s*([^)]+)\)/);
+          const lotMatch = ingredient.match(/\(Lot:\s*([^)]+)\)/);
+          
+          if (nameMatch && amountMatch) {
+            doc.text(nameMatch[1].trim(), margin + 2, yPos);
+            doc.text(amountMatch[1].trim(), margin + 60, yPos);
+            doc.text(hdrmMatch ? hdrmMatch[1].trim() : 'N/A', margin + 95, yPos);
+            doc.text(lotMatch ? lotMatch[1].trim() : 'N/A', margin + 130, yPos);
           }
           doc.rect(margin, yPos - 5, contentWidth, 7);
           yPos += 7;
