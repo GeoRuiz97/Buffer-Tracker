@@ -293,6 +293,87 @@
       justify-content: space-between;
       align-items: start;
       margin-bottom: 1rem;
+      position: relative;
+    }
+
+    .copy-icon-btn {
+      position: absolute;
+      top: -0.5rem;
+      right: -0.5rem;
+      background: var(--bg-secondary);
+      border: 1px solid var(--accent-primary);
+      padding: 0.5rem;
+      border-radius: 8px;
+      cursor: pointer;
+      color: var(--accent-primary);
+      font-size: 1rem;
+      transition: all 0.3s ease;
+      z-index: 10;
+    }
+
+    .copy-icon-btn:hover {
+      background: var(--accent-primary);
+      color: var(--bg-primary);
+      transform: scale(1.1);
+    }
+
+    /* List view for archived buffers */
+    .buffer-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .buffer-list-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+    }
+
+    .buffer-list-item:hover {
+      border-color: var(--accent-primary);
+      transform: translateX(5px);
+    }
+
+    .buffer-list-item.expanded {
+      cursor: default;
+      transform: none;
+    }
+
+    .list-item-main {
+      display: flex;
+      gap: 2rem;
+      align-items: center;
+      flex: 1;
+    }
+
+    .list-item-name {
+      font-weight: 700;
+      color: var(--accent-primary);
+      min-width: 200px;
+    }
+
+    .list-item-lot {
+      color: var(--accent-secondary);
+      min-width: 150px;
+    }
+
+    .list-item-date {
+      color: var(--text-secondary);
+      min-width: 100px;
+    }
+
+    .list-item-actions {
+      display: flex;
+      gap: 0.5rem;
     }
 
     .buffer-name {
@@ -1291,11 +1372,43 @@
         return;
       }
 
-      grid.style.display = 'grid';
       emptyState.style.display = 'none';
 
       // Sort by expiration date
       filteredBuffers.sort((a, b) => new Date(a.expirationDate) - new Date(b.expirationDate));
+
+      // ARCHIVED BUFFERS: Render as list view
+      if (currentFilter === 'archived') {
+        grid.style.display = 'block';
+        grid.style.gridTemplateColumns = '1fr'; // Single column for list view
+        
+        grid.innerHTML = filteredBuffers.map(buffer => {
+          const expDate = (() => {
+            const [year, month, day] = buffer.expirationDate.split('-');
+            return new Date(year, month - 1, day).toLocaleDateString();
+          })();
+          
+          return `
+            <div class="buffer-list-item" id="list-item-${buffer.id}" onclick="toggleBufferDetails('${buffer.id}')">
+              <div class="list-item-main">
+                <div class="list-item-name">${buffer.name}</div>
+                <div class="list-item-lot">LOT: ${buffer.lotNumber}</div>
+                <div class="list-item-date">Exp: ${expDate}</div>
+              </div>
+              <div class="list-item-actions" onclick="event.stopPropagation()">
+                <button class="btn btn-secondary btn-small" onclick="restoreBuffer('${buffer.id}')">Restore</button>
+                <button class="btn btn-secondary btn-small" onclick="confirmDelete('${buffer.id}')">Delete</button>
+              </div>
+            </div>
+            <div id="details-${buffer.id}" style="display: none;"></div>
+          `;
+        }).join('');
+        return;
+      }
+
+      // ACTIVE BUFFERS: Render as grid view
+      grid.style.display = 'grid';
+      grid.style.gridTemplateColumns = ''; // Reset to default grid
 
       grid.innerHTML = filteredBuffers.map(buffer => {
         const status = getBufferStatus(buffer);
@@ -1321,6 +1434,7 @@
 
         return `
           <div class="buffer-card ${statusClass}">
+            ${!buffer.archived ? `<button class="copy-icon-btn" onclick="duplicateBuffer('${buffer.id}')" title="Duplicate Buffer">📋</button>` : ''}
             <div class="buffer-header">
               <div>
                 <h3 class="buffer-name">${buffer.name}</h3>
@@ -1398,7 +1512,6 @@
             <div class="qr-code-container" id="qr-${buffer.id}"></div>
             <div class="buffer-actions">
               ${!buffer.archived ? `
-                <button class="btn btn-secondary btn-small" onclick="duplicateBuffer('${buffer.id}')">Copy</button>
                 <button class="btn btn-secondary btn-small" onclick="downloadQR('${buffer.id}')">QR</button>
                 <button class="btn btn-secondary btn-small" onclick="generateBatchRecord('${buffer.id}')">PDF</button>
                 <button class="btn btn-secondary btn-small" onclick="editBuffer('${buffer.id}')">Edit</button>
@@ -1846,6 +1959,137 @@ Storage: ${buffer.storage || 'N/A'}${buffer.location ? '\nLoc: ' + buffer.locati
         console.error('Error restoring buffer:', error);
         alert('Failed to restore buffer: ' + error.message);
       }
+    }
+
+    // Toggle buffer details in list view (for archived buffers)
+    function toggleBufferDetails(id) {
+      const detailsDiv = document.getElementById(`details-${id}`);
+      const listItem = document.getElementById(`list-item-${id}`);
+      
+      if (!detailsDiv || !listItem) return;
+      
+      // If already expanded, collapse it
+      if (detailsDiv.style.display === 'block') {
+        detailsDiv.style.display = 'none';
+        listItem.classList.remove('expanded');
+        return;
+      }
+      
+      // Collapse all other expanded items
+      document.querySelectorAll('[id^="details-"]').forEach(div => {
+        div.style.display = 'none';
+      });
+      document.querySelectorAll('.buffer-list-item').forEach(item => {
+        item.classList.remove('expanded');
+      });
+      
+      // Expand this one
+      const buffer = buffers.find(b => b.id === id);
+      if (!buffer) return;
+      
+      // Render full card view inside the details div
+      const status = getBufferStatus(buffer);
+      const daysRemaining = getDaysUntilExpiration(buffer.expirationDate);
+      
+      let statusBadge = '';
+      let statusClass = '';
+      let daysClass = 'success';
+      
+      if (status === 'expired') {
+        statusBadge = '<span class="status-badge expired">Expired</span>';
+        statusClass = 'expired';
+        daysClass = 'danger';
+      } else if (status === 'expiring-soon') {
+        statusBadge = '<span class="status-badge expiring-soon">Expiring Soon</span>';
+        statusClass = 'expiring-soon';
+        daysClass = 'warning';
+      } else {
+        statusBadge = '<span class="status-badge active">Active</span>';
+        statusClass = '';
+        daysClass = daysRemaining <= 7 ? 'warning' : 'success';
+      }
+      
+      detailsDiv.innerHTML = `
+        <div class="buffer-card ${statusClass}" style="margin-top: 0.5rem;">
+          <div class="buffer-header">
+            <div>
+              <h3 class="buffer-name">${buffer.name}</h3>
+              <div class="lot-number">LOT: ${buffer.lotNumber}</div>
+              ${statusBadge}
+            </div>
+          </div>
+          ${buffer.composition ? `<p class="buffer-composition">${buffer.composition}</p>` : ''}
+          <p class="prepared-by">
+            👤 ${buffer.preparedBy} | 📦 ${buffer.volume} ${buffer.volumeUnit}
+            ${buffer.ph ? ` | pH ${buffer.ph}` : ''}
+            ${buffer.concentration ? ` | ${buffer.concentration}` : ''}
+            ${buffer.sterilization ? ` | 🔬 ${buffer.sterilization}` : ''}
+          </p>
+          <div class="buffer-info">
+            <div class="info-row">
+              <span class="info-label">Prepared</span>
+              <span class="info-value">${(() => {
+                const [year, month, day] = buffer.datePrepared.split('-');
+                return new Date(year, month - 1, day).toLocaleDateString();
+              })()}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Expires</span>
+              <span class="info-value">${(() => {
+                const [year, month, day] = buffer.expirationDate.split('-');
+                return new Date(year, month - 1, day).toLocaleDateString();
+              })()}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Days Remaining</span>
+              <span class="info-value days-remaining ${daysClass}">${daysRemaining >= 0 ? daysRemaining : 'EXPIRED'}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Storage</span>
+              <span class="info-value">${buffer.storage}</span>
+            </div>
+            ${buffer.location ? `
+            <div class="info-row">
+              <span class="info-label">Location</span>
+              <span class="info-value">📍 ${buffer.location}</span>
+            </div>
+            ` : ''}
+            ${buffer.formula ? `
+            <div class="info-row" style="display: block; padding: 0.75rem; background: var(--bg-secondary); border-radius: 8px;">
+              <span class="info-label" style="display: block; margin-bottom: 0.75rem; font-size: 0.85rem;">Formula/Recipe</span>
+              <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem;">
+                <thead>
+                  <tr style="border-bottom: 1px solid var(--border);">
+                    <th style="text-align: left; padding: 0.4rem; color: var(--text-muted); font-weight: 600; font-family: 'JetBrains Mono', monospace;">Ingredient</th>
+                    <th style="text-align: left; padding: 0.4rem; color: var(--text-muted); font-weight: 600; font-family: 'JetBrains Mono', monospace;">Amount</th>
+                    <th style="text-align: left; padding: 0.4rem; color: var(--text-muted); font-weight: 600; font-family: 'JetBrains Mono', monospace;">HDRM</th>
+                    <th style="text-align: left; padding: 0.4rem; color: var(--text-muted); font-weight: 600; font-family: 'JetBrains Mono', monospace;">Lot</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${buffer.formula.split(',').map(ing => {
+                    const nameMatch = ing.match(/^([^:]+):/);
+                    const amountMatch = ing.match(/:\s*([^(]+)/);
+                    const hdrmMatch = ing.match(/\\(HDRM:\\s*([^)]+)\\)/);
+                    const lotMatch = ing.match(/\\(Lot:\\s*([^)]+)\\)/);
+                    
+                    return `<tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                      <td style="padding: 0.4rem; color: var(--text-primary);">${nameMatch ? nameMatch[1].trim() : 'Unknown'}</td>
+                      <td style="padding: 0.4rem; color: var(--text-primary);">${amountMatch ? amountMatch[1].trim() : 'N/A'}</td>
+                      <td style="padding: 0.4rem; color: var(--text-secondary); font-size: 0.75rem;">${hdrmMatch ? hdrmMatch[1].trim() : '-'}</td>
+                      <td style="padding: 0.4rem; color: var(--text-secondary); font-size: 0.75rem;">${lotMatch ? lotMatch[1].trim() : '-'}</td>
+                    </tr>`;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+      
+      detailsDiv.style.display = 'block';
+      listItem.classList.add('expanded');
     }
 
     // Handle form submission
