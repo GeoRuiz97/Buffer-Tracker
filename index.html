@@ -1084,7 +1084,6 @@
             <div style="display:flex; flex-direction:column; gap:0.5rem;">
               <button class="btn btn-secondary" style="padding:0.5rem; font-size:0.78rem; width:100%;" onclick="selectAllLabels()">Select All (30)</button>
               <button class="btn btn-secondary" style="padding:0.5rem; font-size:0.78rem; width:100%;" onclick="clearAllLabels()">Clear All</button>
-              <button class="btn btn-secondary" style="padding:0.5rem; font-size:0.78rem; width:100%;" onclick="applyTextToSelected()">Apply Text → Selected</button>
             </div>
             <div style="margin-top:0.75rem; font-family:'JetBrains Mono',monospace; font-size:0.78rem; color:var(--text-secondary);">
               <span id="lblSelCount">0</span> of 30 selected
@@ -2579,6 +2578,19 @@ ${buffer.storage || 'N/A'}${buffer.location ? '|' + buffer.location : ''}`;
       });
     }
 
+    // ── Name abbreviation helper ──────────────────────────────────
+    // If the value already looks like initials (no spaces, or ≤3 chars), keep it.
+    // Otherwise abbreviate "First Last" → "FL", "First Middle Last" → "FML", etc.
+    function abbreviateName(name) {
+      const trimmed = name.trim();
+      // Already initials: no spaces, or all caps ≤3 chars, or very short
+      if (!trimmed.includes(' ') || trimmed.length <= 3) return trimmed;
+      // Check if it looks like already-abbreviated (e.g. "G.R." or "GR")
+      if (/^[A-Z]{1,4}\.?$/.test(trimmed)) return trimmed;
+      // Abbreviate each word to its first letter, uppercase
+      return trimmed.split(/\s+/).map(w => w[0].toUpperCase()).join('');
+    }
+
     // ── Auto-fill text from selected buffer ───────────────────────
     function updateLabelPreviewFromBuffer() {
       const id = document.getElementById('lblBufferSelect').value;
@@ -2598,7 +2610,7 @@ ${buffer.storage || 'N/A'}${buffer.location ? '|' + buffer.location : ''}`;
       document.getElementById('lblLine1').value = b.name + (b.concentration ? '  '+b.concentration : '');
       document.getElementById('lblLine2').value = 'LOT: ' + b.lotNumber;
       document.getElementById('lblLine3').value = `Prep: ${prepStr}   Exp: ${expStr}`;
-      document.getElementById('lblLine4').value = b.storage + (b.location ? '  |  ' + b.location : '') + (b.ph ? `  |  pH ${b.ph}` : '');
+      document.getElementById('lblLine4').value = b.storage + (b.ph ? `  |  pH ${b.ph}` : '') + (b.preparedBy ? '  |  ' + abbreviateName(b.preparedBy) : '');
       refreshLabelContent();
     }
 
