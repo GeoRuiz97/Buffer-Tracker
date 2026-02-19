@@ -1568,6 +1568,13 @@
       }
       
       try {
+        // Check if buffer has required fields
+        if (!buffer.expirationDate || !buffer.datePrepared) {
+          console.error('Buffer missing required date fields:', buffer);
+          container.innerHTML = '<p style="color: var(--accent-danger); text-align: center; padding: 1rem; font-size: 0.85rem;">Missing date information</p>';
+          return;
+        }
+        
         const daysRemaining = getDaysUntilExpiration(buffer.expirationDate);
         const status = getBufferStatus(buffer);
         
@@ -1585,9 +1592,11 @@
           try {
             if (!dateStr) return 'N/A';
             const [year, month, day] = dateStr.split('-');
+            if (!year || !month || !day) return dateStr;
             return new Date(year, month - 1, day).toLocaleDateString('en-US', {month: '2-digit', day: '2-digit', year: '2-digit'});
           } catch (e) {
-            return dateStr;
+            console.error('Date formatting error:', e, dateStr);
+            return dateStr || 'N/A';
           }
         };
         
@@ -1611,7 +1620,7 @@ Storage: ${buffer.storage || 'N/A'}${buffer.location ? '\nLoc: ' + buffer.locati
         });
       } catch (error) {
         console.error('Error generating QR code:', error, buffer);
-        container.innerHTML = '<p style="color: var(--accent-danger); text-align: center; padding: 1rem; font-size: 0.85rem;">Error generating QR code</p>';
+        container.innerHTML = '<p style="color: var(--accent-danger); text-align: center; padding: 1rem; font-size: 0.85rem;">Error: ' + (error.message || 'Unknown error') + '</p>';
       }
     }
 
