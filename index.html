@@ -1600,15 +1600,15 @@
           }
         };
         
-        // Create compact text format for QR code - only essential info (no formula to avoid overflow)
-        const qrText = `${buffer.name || 'Unknown Buffer'}
-LOT: ${buffer.lotNumber || 'N/A'}
+        // Create compact QR code text with abbreviations to fit all info
+        const qrText = `${buffer.name || 'Unknown'}
+LOT:${buffer.lotNumber || 'N/A'}
 ${statusText}
-Vol: ${buffer.volume || '?'}${buffer.volumeUnit || ''}${buffer.concentration ? ' | ' + buffer.concentration : ''}${buffer.ph ? ' | pH ' + buffer.ph : ''}
-By: ${buffer.preparedBy || 'Unknown'}
-Made: ${formatDate(buffer.datePrepared)}
-Exp: ${formatDate(buffer.expirationDate)}
-Storage: ${buffer.storage || 'N/A'}${buffer.location ? '\nLoc: ' + buffer.location : ''}`;
+${buffer.volume || '?'}${buffer.volumeUnit || ''}${buffer.concentration ? '|' + buffer.concentration : ''}${buffer.ph ? '|pH' + buffer.ph : ''}
+By:${buffer.preparedBy || 'Unknown'}
+Prep:${formatDate(buffer.datePrepared)}
+Exp:${formatDate(buffer.expirationDate)}
+${buffer.storage || 'N/A'}${buffer.location ? '|' + buffer.location : ''}`;
         
         new QRCode(container, {
           text: qrText,
