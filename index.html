@@ -1074,7 +1074,7 @@
             <label style="font-family:'JetBrains Mono',monospace; font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.08em; display:block; margin-bottom:0.5rem;">Font Size: <span id="lblFontSizeVal">9</span>pt</label>
             <input type="range" id="lblFontSize" min="6" max="14" value="9" step="0.5"
               style="width:100%; accent-color:var(--accent-primary);"
-              oninput="document.getElementById('lblFontSizeVal').textContent=this.value; refreshLabelContent()">
+              oninput="onFontSizeChange()">
           </div>
 
           <!-- Text alignment -->
@@ -2868,15 +2868,30 @@
       renderLabelSheet();
     }
 
-    // ── Live-refresh: update selected labels as you type ──────────
+    // ── Live-refresh: update selected (pending) labels as you type ──
     function refreshLabelContent() {
       lblFontSizePt = parseFloat(document.getElementById('lblFontSize').value);
       const content = buildContentFromInputs();
       lblSelected.forEach(i => { lblContent[i] = content ? { ...content } : null; });
-      // Re-render only cell contents, not the whole grid (perf)
+      // Re-render all cells so stamped labels stay visible
       for (let i = 0; i < LBL.TOTAL; i++) {
         const inner = document.getElementById(`lbl-inner-${i}`);
         if (inner) inner.innerHTML = renderCellHTML(i);
+      }
+    }
+
+    // ── Font size change: update ALL stamped labels with new size ──
+    function onFontSizeChange() {
+      const newSize = parseFloat(document.getElementById('lblFontSize').value);
+      document.getElementById('lblFontSizeVal').textContent = newSize;
+      lblFontSizePt = newSize;
+      // Update font size on every stamped label
+      for (let i = 0; i < LBL.TOTAL; i++) {
+        if (lblContent[i]) {
+          lblContent[i].fontSize = newSize;
+          const inner = document.getElementById(`lbl-inner-${i}`);
+          if (inner) inner.innerHTML = renderCellHTML(i);
+        }
       }
     }
 
