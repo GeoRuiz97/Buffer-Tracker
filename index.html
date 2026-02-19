@@ -1039,11 +1039,12 @@
             <input id="lblBufferSearch" type="text" placeholder="🔍 Search buffers..."
               style="width:100%; padding:0.5rem 0.65rem; margin-bottom:0.4rem; background:var(--bg-primary); border:1px solid var(--border); border-radius:7px; color:var(--text-primary); font-family:'Crimson Pro',serif; font-size:0.9rem;"
               oninput="filterLabelBufferSelect()">
-            <select id="lblBufferSelect" size="5" onchange="onLabelBufferSelectChange()"
-              style="width:100%; padding:0.4rem; background:var(--bg-primary); border:1px solid var(--border); border-radius:8px; color:var(--text-primary); font-family:'Crimson Pro',serif; font-size:0.9rem; height:auto;">
-            </select>
+            <input type="hidden" id="lblBufferSelect">
+            <div id="lblBufferList"
+              style="width:100%; max-height:180px; overflow-y:auto; background:var(--bg-primary); border:1px solid var(--border); border-radius:8px; display:flex; flex-direction:column;">
+            </div>
             <p id="lblPrintAllHint" style="display:none; margin-top:0.4rem; font-family:'JetBrains Mono',monospace; font-size:0.7rem; color:var(--accent-primary); line-height:1.4;">
-              Fills all 30 slots with your buffers in order — one per label, cycling through the list. Extra slots left blank.
+              Fills all 30 slots with your buffers in order — one per label. Extra slots left blank.
             </p>
           </div>
 
@@ -1829,10 +1830,24 @@
               <div class="qr-code-container" id="qr-${buffer.id}"></div>
               ${!buffer.archived ? `
               <button onclick="openLabelModal('${buffer.id}')" title="Quick Print Label"
-                style="position:absolute; top:6px; right:6px; background:var(--accent-primary); border:none; border-radius:6px; padding:4px 7px; cursor:pointer; font-size:0.75rem; line-height:1; color:var(--bg-primary); font-family:'JetBrains Mono',monospace; font-weight:700; opacity:0.85; transition:opacity 0.2s, transform 0.2s;"
-                onmouseover="this.style.opacity='1';this.style.transform='scale(1.08)'"
-                onmouseout="this.style.opacity='0.85';this.style.transform='scale(1)'">
-                🏷 Print
+                style="position:absolute; top:6px; right:6px; background:white; border:2px solid #ddd; border-radius:8px; padding:5px; cursor:pointer; width:36px; height:36px; display:flex; align-items:center; justify-content:center; opacity:0.85; transition:opacity 0.2s, transform 0.2s, border-color 0.2s; box-shadow:0 1px 4px rgba(0,0,0,0.15);"
+                onmouseover="this.style.opacity='1';this.style.transform='scale(1.1)';this.style.borderColor='#00d9ff';"
+                onmouseout="this.style.opacity='0.85';this.style.transform='scale(1)';this.style.borderColor='#ddd';">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <!-- printer body -->
+                  <rect x="3" y="8" width="18" height="10" rx="2" ry="2"/>
+                  <!-- paper top -->
+                  <path d="M7 8V4a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v4"/>
+                  <!-- paper coming out -->
+                  <rect x="7" y="13" width="10" height="7" rx="1"/>
+                  <!-- dots on printer -->
+                  <circle cx="8.5" cy="11.5" r="0.75" fill="#1a1a1a" stroke="none"/>
+                  <circle cx="11" cy="11.5" r="0.75" fill="#1a1a1a" stroke="none"/>
+                  <circle cx="13.5" cy="11.5" r="0.75" fill="#1a1a1a" stroke="none"/>
+                  <!-- lines on paper -->
+                  <line x1="9" y1="16" x2="15" y2="16"/>
+                  <line x1="9" y1="18" x2="13" y2="18"/>
+                </svg>
               </button>` : ''}
             </div>
             <div class="buffer-actions">
@@ -2630,10 +2645,11 @@
       if (e.target.id === 'labelModal') closeLabelModal();
     });
 
-    // ── Populate buffer dropdown ───────────────────────────────────
+    // ── Populate buffer list ───────────────────────────────────────
     function populateLabelBufferSelect(filterText = '') {
-      const sel = document.getElementById('lblBufferSelect');
-      sel.innerHTML = '';
+      const list = document.getElementById('lblBufferList');
+      const currentVal = document.getElementById('lblBufferSelect').value;
+      list.innerHTML = '';
 
       const q = filterText.toLowerCase();
       const activeBuffers = buffers.filter(b => !b.archived);
@@ -2641,27 +2657,42 @@
         ? activeBuffers.filter(b => b.name.toLowerCase().includes(q) || b.lotNumber.toLowerCase().includes(q) || (b.preparedBy || '').toLowerCase().includes(q))
         : activeBuffers;
 
-      // Always include fixed options at top
-      const placeholder = new Option('— Custom text only —', '');
-      sel.appendChild(placeholder);
-      const printAll = new Option(`🖨 Print All (${matched.length} buffers)`, '__PRINT_ALL__');
-      printAll.style.color = 'var(--accent-primary)';
-      printAll.style.fontWeight = '700';
-      sel.appendChild(printAll);
+      // Helper to create a row
+      const makeRow = (value, nameText, subText, isSpecial = false) => {
+        const row = document.createElement('div');
+        const isSelected = value === currentVal;
+        row.dataset.value = value;
+        row.style.cssText = `padding:0.45rem 0.65rem; cursor:pointer; border-bottom:1px solid var(--border); transition:background 0.15s; background:${isSelected ? 'rgba(0,217,255,0.12)' : 'transparent'};`;
+        row.innerHTML = isSpecial
+          ? `<div style="font-family:'JetBrains Mono',monospace; font-size:0.78rem; font-weight:700; color:var(--accent-primary);">${nameText}</div>`
+          : `<div style="font-family:'Crimson Pro',serif; font-size:0.92rem; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${nameText}</div>
+             <div style="font-family:'JetBrains Mono',monospace; font-size:0.72rem; color:var(--accent-secondary); margin-top:1px;">${subText}</div>`;
+        row.onmouseover = () => { if (row.dataset.value !== currentVal) row.style.background = 'rgba(255,255,255,0.05)'; };
+        row.onmouseout  = () => { if (row.dataset.value !== document.getElementById('lblBufferSelect').value) row.style.background = 'transparent'; };
+        row.onclick = () => selectLabelBuffer(value);
+        return row;
+      };
+
+      // Fixed top options
+      list.appendChild(makeRow('', '— Custom text only —', '', true));
+      list.appendChild(makeRow('__PRINT_ALL__', `🖨 Print All (${matched.length} buffers)`, '', true));
 
       matched.forEach(b => {
-        const opt = new Option(`${b.name}  [${b.lotNumber}]`, b.id);
-        sel.appendChild(opt);
+        list.appendChild(makeRow(b.id, b.name, b.lotNumber));
       });
     }
 
     function filterLabelBufferSelect() {
-      const q = document.getElementById('lblBufferSearch').value;
-      const currentVal = document.getElementById('lblBufferSelect').value;
-      populateLabelBufferSelect(q);
-      // Try to restore selection if still present
-      const sel = document.getElementById('lblBufferSelect');
-      if ([...sel.options].some(o => o.value === currentVal)) sel.value = currentVal;
+      populateLabelBufferSelect(document.getElementById('lblBufferSearch').value);
+    }
+
+    function selectLabelBuffer(value) {
+      document.getElementById('lblBufferSelect').value = value;
+      // Update highlight
+      document.querySelectorAll('#lblBufferList > div').forEach(row => {
+        row.style.background = row.dataset.value === value ? 'rgba(0,217,255,0.12)' : 'transparent';
+      });
+      onLabelBufferSelectChange();
     }
 
     function onLabelBufferSelectChange() {
@@ -2699,7 +2730,7 @@
         const lines = [
           b.name + (b.concentration ? '  '+b.concentration : ''),
           'LOT: ' + b.lotNumber,
-          `Prep: ${prepStr} Exp: ${expStr}`,
+          `Prep:${prepStr} Exp:${expStr}`,
           b.storage + (b.ph ? `  |  pH ${b.ph}` : '') + (b.preparedBy ? '  |  ' + abbreviateName(b.preparedBy) : ''),
         ].filter(Boolean);
 
@@ -2754,7 +2785,7 @@
 
       document.getElementById('lblLine1').value = b.name + (b.concentration ? '  '+b.concentration : '');
       document.getElementById('lblLine2').value = 'LOT: ' + b.lotNumber;
-      document.getElementById('lblLine3').value = `Prep: ${prepStr} Exp: ${expStr}`;
+      document.getElementById('lblLine3').value = `Prep:${prepStr} Exp:${expStr}`;
       document.getElementById('lblLine4').value = b.storage + (b.ph ? `  |  pH ${b.ph}` : '') + (b.preparedBy ? '  |  ' + abbreviateName(b.preparedBy) : '');
 
       // Grab the already-rendered QR canvas from the buffer card
