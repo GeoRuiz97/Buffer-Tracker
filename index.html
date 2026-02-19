@@ -2816,7 +2816,10 @@
 
       // Grab the already-rendered QR canvas from the buffer card
       lblCurrentQRDataUrl = getLabelQRDataUrl(id);
-      refreshLabelContent();
+
+      // Deselect all — stamped labels stay as-is; next click will stamp with the new buffer
+      lblSelected.clear();
+      updateSelectionUI();
     }
 
     // ── Build content object from current inputs ───────────────────
