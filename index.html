@@ -1113,7 +1113,7 @@
         <div style="flex: 1; overflow: auto; background: #2a2f3d; padding: 1.5rem; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 0.75rem;">
 
           <!-- Click-a-position hint (only shown after quick-print) -->
-          <div id="lblClickHint" style="display:none; align-items:center; gap:0.6rem; background:rgba(0,217,255,0.12); border:1px solid var(--accent-primary); border-radius:10px; padding:0.6rem 1rem; width:100%; max-width: calc(816px * 0.54); box-sizing:border-box;">
+          <div id="lblClickHint" style="display:none; align-items:center; gap:0.6rem; background:rgba(0,217,255,0.12); border:1px solid var(--accent-primary); border-radius:10px; padding:0.6rem 1rem; width:100%; max-width:720px; box-sizing:border-box;">
             <span style="font-size:1.3rem;">👆</span>
             <span style="font-family:'JetBrains Mono',monospace; font-size:0.78rem; color:var(--accent-primary); line-height:1.4;">
               Click any label position on the sheet to stamp it. Click again to clear it.
@@ -1121,13 +1121,22 @@
             <button onclick="document.getElementById('lblClickHint').style.display='none'" style="margin-left:auto; background:none; border:none; color:var(--text-muted); font-size:1.1rem; cursor:pointer; line-height:1; flex-shrink:0;">✕</button>
           </div>
 
-          <div style="background: #3a4050; padding: 1rem; border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.4);">
-            <!-- Clip wrapper: real sheet is 8.5"×11" = 816×1056px at 96dpi, scaled to 54% -->
-            <div style="width: calc(816px * 0.54); height: calc(1056px * 0.54); overflow: hidden; position: relative; flex-shrink: 0;">
+          <!-- Zoom controls -->
+          <div style="display:flex; align-items:center; gap:0.5rem; font-family:'JetBrains Mono',monospace; font-size:0.78rem; color:var(--text-secondary);">
+            <button onclick="adjustZoom(-0.1)" style="background:var(--bg-card); border:1px solid var(--border); color:var(--text-primary); border-radius:6px; width:28px; height:28px; cursor:pointer; font-size:1rem; display:flex; align-items:center; justify-content:center; transition:border-color 0.2s;" onmouseover="this.style.borderColor='var(--accent-primary)'" onmouseout="this.style.borderColor='var(--border)'">−</button>
+            <span id="lblZoomLabel" style="min-width:38px; text-align:center;">75%</span>
+            <button onclick="adjustZoom(0.1)" style="background:var(--bg-card); border:1px solid var(--border); color:var(--text-primary); border-radius:6px; width:28px; height:28px; cursor:pointer; font-size:1rem; display:flex; align-items:center; justify-content:center; transition:border-color 0.2s;" onmouseover="this.style.borderColor='var(--accent-primary)'" onmouseout="this.style.borderColor='var(--border)'">+</button>
+            <button onclick="setZoom(0.54)" style="background:var(--bg-card); border:1px solid var(--border); color:var(--text-muted); border-radius:6px; padding:0 8px; height:28px; cursor:pointer; font-size:0.72rem; transition:border-color 0.2s;" onmouseover="this.style.borderColor='var(--accent-primary)'" onmouseout="this.style.borderColor='var(--border)'">Fit</button>
+            <button onclick="setZoom(1)" style="background:var(--bg-card); border:1px solid var(--border); color:var(--text-muted); border-radius:6px; padding:0 8px; height:28px; cursor:pointer; font-size:0.72rem; transition:border-color 0.2s;" onmouseover="this.style.borderColor='var(--accent-primary)'" onmouseout="this.style.borderColor='var(--border)'">100%</button>
+          </div>
+
+          <!-- Sheet wrapper — clips the scaled preview -->
+          <div id="lblSheetOuter" style="background: #3a4050; padding: 1rem; border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); flex-shrink:0;">
+            <div id="lblSheetClip" style="width: calc(816px * 0.75); height: calc(1056px * 0.75); overflow: hidden; position: relative;">
               <div id="lblSheetPreview" style="
                 width: 816px;
                 height: 1056px;
-                transform: scale(0.54);
+                transform: scale(0.75);
                 transform-origin: top left;
                 background: white;
                 position: relative;
@@ -2901,7 +2910,14 @@
       ['left','center','right'].forEach(a => {
         document.getElementById(`lblAlign${a.charAt(0).toUpperCase()+a.slice(1)}`).classList.toggle('lbl-align-active', a === align);
       });
-      refreshLabelContent();
+      // Update alignment on all stamped labels
+      for (let i = 0; i < LBL.TOTAL; i++) {
+        if (lblContent[i]) {
+          lblContent[i].align = align;
+          const inner = document.getElementById(`lbl-inner-${i}`);
+          if (inner) inner.innerHTML = renderCellHTML(i);
+        }
+      }
     }
 
     // ── Selection helpers ─────────────────────────────────────────
@@ -3124,6 +3140,22 @@
     // ═══════════════════════════════════════════════════════════════
     //  END LABEL PRINTER
     // ═══════════════════════════════════════════════════════════════
+
+    // ── Sheet zoom controls ───────────────────────────────────────
+    let lblZoom = 0.75;
+
+    function setZoom(z) {
+      lblZoom = Math.min(1.5, Math.max(0.3, z));
+      lblZoom = Math.round(lblZoom * 10) / 10; // snap to 0.1 steps
+      document.getElementById('lblSheetPreview').style.transform = `scale(${lblZoom})`;
+      document.getElementById('lblSheetClip').style.width  = `${Math.round(816 * lblZoom)}px`;
+      document.getElementById('lblSheetClip').style.height = `${Math.round(1056 * lblZoom)}px`;
+      document.getElementById('lblZoomLabel').textContent = Math.round(lblZoom * 100) + '%';
+    }
+
+    function adjustZoom(delta) {
+      setZoom(lblZoom + delta);
+    }
 
     // ── CSV Export ──────────────────────────────────────────────────────────
 
