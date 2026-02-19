@@ -2128,6 +2128,26 @@ ${buffer.storage || 'N/A'}${buffer.location ? '|' + buffer.location : ''}`;
       listItem.classList.add('expanded');
     }
 
+    // Regenerate lot number when date prepared changes during editing
+    document.getElementById('datePrepared').addEventListener('change', function() {
+      // Only regenerate if we're editing (not creating new)
+      if (editingId) {
+        const datePrepared = this.value;
+        if (datePrepared) {
+          const [year, month, day] = datePrepared.split('-');
+          const dateStr = `${month}${day}${year}`;
+          
+          // Get current sequence number from existing lot number
+          const currentLotNumber = document.getElementById('lotNumber').value;
+          const currentSequence = currentLotNumber.split('-')[2] || '001';
+          
+          // Regenerate with new date but keep same sequence
+          const newLotNumber = `LFA-${dateStr}-${currentSequence}`;
+          document.getElementById('lotNumber').value = newLotNumber;
+        }
+      }
+    });
+
     // Handle form submission
     document.getElementById('bufferForm').addEventListener('submit', async (e) => {
       e.preventDefault();
