@@ -1036,9 +1036,15 @@
           <!-- Buffer selector -->
           <div>
             <label style="font-family:'JetBrains Mono',monospace; font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.08em; display:block; margin-bottom:0.5rem;">Buffer Source</label>
-            <select id="lblBufferSelect" onchange="updateLabelPreviewFromBuffer()" style="width:100%; padding:0.6rem; background:var(--bg-primary); border:1px solid var(--border); border-radius:8px; color:var(--text-primary); font-family:'Crimson Pro',serif; font-size:0.95rem;">
-              <option value="">— Custom text only —</option>
+            <input id="lblBufferSearch" type="text" placeholder="🔍 Search buffers..."
+              style="width:100%; padding:0.5rem 0.65rem; margin-bottom:0.4rem; background:var(--bg-primary); border:1px solid var(--border); border-radius:7px; color:var(--text-primary); font-family:'Crimson Pro',serif; font-size:0.9rem;"
+              oninput="filterLabelBufferSelect()">
+            <select id="lblBufferSelect" size="5" onchange="onLabelBufferSelectChange()"
+              style="width:100%; padding:0.4rem; background:var(--bg-primary); border:1px solid var(--border); border-radius:8px; color:var(--text-primary); font-family:'Crimson Pro',serif; font-size:0.9rem; height:auto;">
             </select>
+            <p id="lblPrintAllHint" style="display:none; margin-top:0.4rem; font-family:'JetBrains Mono',monospace; font-size:0.7rem; color:var(--accent-primary); line-height:1.4;">
+              Fills all 30 slots with your buffers in order — one per label, cycling through the list. Extra slots left blank.
+            </p>
           </div>
 
           <!-- Label text fields -->
@@ -2575,11 +2581,13 @@ ${buffer.storage || 'N/A'}${buffer.location ? '|' + buffer.location : ''}`;
       }
 
       populateLabelBufferSelect();
+      document.getElementById('lblBufferSearch').value = '';
+      document.getElementById('lblPrintAllHint').style.display = 'none';
 
       // Pre-select a buffer if requested (e.g. from card quick-print button)
       if (preloadBufferId) {
         document.getElementById('lblBufferSelect').value = preloadBufferId;
-        updateLabelPreviewFromBuffer();
+        onLabelBufferSelectChange();
       }
 
       renderLabelSheet();
@@ -2605,16 +2613,88 @@ ${buffer.storage || 'N/A'}${buffer.location ? '|' + buffer.location : ''}`;
     });
 
     // ── Populate buffer dropdown ───────────────────────────────────
-    function populateLabelBufferSelect() {
+    function populateLabelBufferSelect(filterText = '') {
       const sel = document.getElementById('lblBufferSelect');
-      // keep first placeholder option
-      while (sel.options.length > 1) sel.remove(1);
-      buffers.filter(b => !b.archived).forEach(b => {
-        const opt = document.createElement('option');
-        opt.value = b.id;
-        opt.textContent = `${b.name}  [${b.lotNumber}]`;
+      sel.innerHTML = '';
+
+      const q = filterText.toLowerCase();
+      const activeBuffers = buffers.filter(b => !b.archived);
+      const matched = q
+        ? activeBuffers.filter(b => b.name.toLowerCase().includes(q) || b.lotNumber.toLowerCase().includes(q) || (b.preparedBy || '').toLowerCase().includes(q))
+        : activeBuffers;
+
+      // Always include fixed options at top
+      const placeholder = new Option('— Custom text only —', '');
+      sel.appendChild(placeholder);
+      const printAll = new Option(`🖨 Print All (${matched.length} buffers)`, '__PRINT_ALL__');
+      printAll.style.color = 'var(--accent-primary)';
+      printAll.style.fontWeight = '700';
+      sel.appendChild(printAll);
+
+      matched.forEach(b => {
+        const opt = new Option(`${b.name}  [${b.lotNumber}]`, b.id);
         sel.appendChild(opt);
       });
+    }
+
+    function filterLabelBufferSelect() {
+      const q = document.getElementById('lblBufferSearch').value;
+      const currentVal = document.getElementById('lblBufferSelect').value;
+      populateLabelBufferSelect(q);
+      // Try to restore selection if still present
+      const sel = document.getElementById('lblBufferSelect');
+      if ([...sel.options].some(o => o.value === currentVal)) sel.value = currentVal;
+    }
+
+    function onLabelBufferSelectChange() {
+      const val = document.getElementById('lblBufferSelect').value;
+      const hint = document.getElementById('lblPrintAllHint');
+      if (val === '__PRINT_ALL__') {
+        hint.style.display = 'block';
+        applyPrintAll();
+      } else {
+        hint.style.display = 'none';
+        updateLabelPreviewFromBuffer();
+      }
+    }
+
+    // ── Print All: fill every slot with buffers in order ──────────
+    function applyPrintAll() {
+      const q = document.getElementById('lblBufferSearch').value.toLowerCase();
+      const activeBuffers = buffers.filter(b => !b.archived);
+      const pool = q
+        ? activeBuffers.filter(b => b.name.toLowerCase().includes(q) || b.lotNumber.toLowerCase().includes(q) || (b.preparedBy || '').toLowerCase().includes(q))
+        : activeBuffers;
+
+      // Clear existing content
+      lblContent = new Array(LBL.TOTAL).fill(null);
+      lblSelected.clear();
+
+      pool.slice(0, LBL.TOTAL).forEach((b, i) => {
+        const formatDate = (dateStr) => {
+          if (!dateStr) return 'N/A';
+          const [y, m, d] = dateStr.split('-');
+          return new Date(y, m-1, d).toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'2-digit'});
+        };
+        const expStr  = formatDate(b.expirationDate);
+        const prepStr = formatDate(b.datePrepared);
+        const lines = [
+          b.name + (b.concentration ? '  '+b.concentration : ''),
+          'LOT: ' + b.lotNumber,
+          `Prep: ${prepStr} Exp: ${expStr}`,
+          b.storage + (b.ph ? `  |  pH ${b.ph}` : '') + (b.preparedBy ? '  |  ' + abbreviateName(b.preparedBy) : ''),
+        ].filter(Boolean);
+
+        lblContent[i] = {
+          lines,
+          fontSize: parseFloat(document.getElementById('lblFontSize').value),
+          align: lblAlign,
+          qrDataUrl: getLabelQRDataUrl(b.id),
+        };
+      });
+
+      updateSelectionUI();
+      renderLabelSheet();
     }
 
     // ── Name abbreviation helper ──────────────────────────────────
@@ -2656,7 +2736,7 @@ ${buffer.storage || 'N/A'}${buffer.location ? '|' + buffer.location : ''}`;
 
       document.getElementById('lblLine1').value = b.name + (b.concentration ? '  '+b.concentration : '');
       document.getElementById('lblLine2').value = 'LOT: ' + b.lotNumber;
-      document.getElementById('lblLine3').value = `Prep: ${prepStr}   Exp: ${expStr}`;
+      document.getElementById('lblLine3').value = `Prep: ${prepStr} Exp: ${expStr}`;
       document.getElementById('lblLine4').value = b.storage + (b.ph ? `  |  pH ${b.ph}` : '') + (b.preparedBy ? '  |  ' + abbreviateName(b.preparedBy) : '');
 
       // Grab the already-rendered QR canvas from the buffer card
