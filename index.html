@@ -986,6 +986,7 @@
       <button class="btn btn-primary" onclick="openAddModal()">+ Add New Buffer</button>
       <button class="btn btn-secondary" onclick="openExportModal()">⬇ Export CSV</button>
       <button class="btn btn-secondary" onclick="openLabelModal()">🏷 Print Labels</button>
+      <button class="btn btn-secondary" onclick="openEmailModal()">📧 Alert Emails</button>
       <div class="filter-tabs">
         <button class="filter-tab active" onclick="filterBuffers('all')">All</button>
         <button class="filter-tab" onclick="filterBuffers('active')">Active</button>
@@ -1244,6 +1245,43 @@
       <div style="display: flex; gap: 1rem; margin-top: 1rem;">
         <button class="btn btn-primary" style="flex:1;" onclick="runExport()">⬇ Download CSV</button>
         <button class="btn btn-secondary" style="flex:1;" onclick="closeExportModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Email Alerts Modal -->
+  <div id="emailModal" class="modal">
+    <div class="modal-content" style="max-width: 480px;">
+      <div class="modal-header">
+        <h2 class="modal-title">📧 Email Alert Recipients</h2>
+        <button class="close-btn" onclick="closeEmailModal()">&times;</button>
+      </div>
+
+      <p style="font-family:'Crimson Pro',serif; font-size:0.95rem; color:var(--text-secondary); margin-bottom:1rem; line-height:1.5;">
+        These addresses receive a daily alert at <strong style="color:var(--text-primary)">7:00 AM PST</strong> listing buffers expiring within 2 days or expired that day. Archived buffers are excluded.
+      </p>
+
+      <!-- Email list -->
+      <div id="emailRecipientList" style="display:flex; flex-direction:column; gap:0.5rem; margin-bottom:1rem; min-height:40px;">
+        <!-- populated by JS -->
+      </div>
+
+      <!-- Add new email -->
+      <div style="display:flex; gap:0.5rem; margin-bottom:1.25rem;">
+        <input type="email" id="newEmailInput" placeholder="name@example.com"
+          style="flex:1; padding:0.6rem 0.75rem; background:var(--bg-secondary); border:1px solid var(--border); border-radius:8px; color:var(--text-primary); font-family:'Crimson Pro',serif; font-size:0.95rem;"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();addEmailRecipient();}">
+        <button class="btn btn-primary" onclick="addEmailRecipient()" style="padding:0.6rem 1rem; white-space:nowrap;">+ Add</button>
+      </div>
+
+      <div style="border-top:1px solid var(--border); padding-top:1rem;">
+        <p style="font-family:'JetBrains Mono',monospace; font-size:0.72rem; color:var(--text-muted); line-height:1.6; margin-bottom:0;">
+          ℹ️ These emails are stored in Firebase and read daily by Make.com to send alerts.
+        </p>
+      </div>
+
+      <div style="display:flex; gap:1rem; margin-top:1rem;">
+        <button class="btn btn-secondary" style="flex:1;" onclick="closeEmailModal()">Done</button>
       </div>
     </div>
   </div>
@@ -3149,7 +3187,7 @@
 
     function setZoom(z) {
       lblZoom = Math.min(1.5, Math.max(0.3, z));
-      lblZoom = Math.round(lblZoom * 10) / 10; // snap to 0.1 steps
+      lblZoom = Math.round(lblZoom * 10) / 10;
       document.getElementById('lblSheetPreview').style.transform = `scale(${lblZoom})`;
       document.getElementById('lblSheetClip').style.width  = `${Math.round(816 * lblZoom)}px`;
       document.getElementById('lblSheetClip').style.height = `${Math.round(1056 * lblZoom)}px`;
@@ -3158,6 +3196,88 @@
 
     function adjustZoom(delta) {
       setZoom(lblZoom + delta);
+    }
+
+    // ── Email Alert Recipients ────────────────────────────────────────────────
+    const emailSettingsDoc = db.collection('settings').doc('emailAlerts');
+
+    async function openEmailModal() {
+      document.getElementById('emailModal').classList.add('show');
+      await loadEmailRecipients();
+    }
+
+    function closeEmailModal() {
+      document.getElementById('emailModal').classList.remove('show');
+      document.getElementById('newEmailInput').value = '';
+    }
+
+    document.getElementById('emailModal').addEventListener('click', e => {
+      if (e.target.id === 'emailModal') closeEmailModal();
+    });
+
+    async function loadEmailRecipients() {
+      const list = document.getElementById('emailRecipientList');
+      list.innerHTML = '<span style="font-family:\'JetBrains Mono\',monospace; font-size:0.8rem; color:var(--text-muted);">Loading...</span>';
+      try {
+        const doc = await emailSettingsDoc.get();
+        const emails = (doc.exists && doc.data().recipients) ? doc.data().recipients : [];
+        renderEmailList(emails);
+      } catch(e) {
+        list.innerHTML = '<span style="color:var(--accent-danger); font-size:0.85rem;">Failed to load recipients.</span>';
+      }
+    }
+
+    function renderEmailList(emails) {
+      const list = document.getElementById('emailRecipientList');
+      if (emails.length === 0) {
+        list.innerHTML = '<span style="font-family:\'JetBrains Mono\',monospace; font-size:0.8rem; color:var(--text-muted); font-style:italic;">No recipients yet.</span>';
+        return;
+      }
+      list.innerHTML = emails.map((email, i) => `
+        <div style="display:flex; align-items:center; justify-content:space-between; background:var(--bg-secondary); border:1px solid var(--border); border-radius:8px; padding:0.5rem 0.75rem;">
+          <span style="font-family:'Crimson Pro',serif; font-size:0.95rem; color:var(--text-primary);">📧 ${email}</span>
+          <button onclick="removeEmailRecipient(${i})"
+            style="background:none; border:none; color:var(--accent-danger); cursor:pointer; font-size:1.1rem; padding:0 0.25rem; line-height:1;"
+            title="Remove">✕</button>
+        </div>
+      `).join('');
+    }
+
+    async function addEmailRecipient() {
+      const input = document.getElementById('newEmailInput');
+      const email = input.value.trim().toLowerCase();
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        input.style.borderColor = 'var(--accent-danger)';
+        setTimeout(() => input.style.borderColor = 'var(--border)', 1500);
+        return;
+      }
+      try {
+        const doc = await emailSettingsDoc.get();
+        const existing = (doc.exists && doc.data().recipients) ? doc.data().recipients : [];
+        if (existing.includes(email)) {
+          input.style.borderColor = 'var(--accent-warning)';
+          setTimeout(() => input.style.borderColor = 'var(--border)', 1500);
+          return;
+        }
+        const updated = [...existing, email];
+        await emailSettingsDoc.set({ recipients: updated }, { merge: true });
+        input.value = '';
+        renderEmailList(updated);
+      } catch(e) {
+        alert('Failed to save email: ' + e.message);
+      }
+    }
+
+    async function removeEmailRecipient(index) {
+      try {
+        const doc = await emailSettingsDoc.get();
+        const existing = (doc.exists && doc.data().recipients) ? doc.data().recipients : [];
+        existing.splice(index, 1);
+        await emailSettingsDoc.set({ recipients: existing }, { merge: true });
+        renderEmailList(existing);
+      } catch(e) {
+        alert('Failed to remove email: ' + e.message);
+      }
     }
 
     // ── CSV Export ──────────────────────────────────────────────────────────
