@@ -902,6 +902,7 @@
 
     <div class="controls">
       <button class="btn btn-primary" onclick="openAddModal()">+ Add New Buffer</button>
+      <button class="btn btn-secondary" onclick="openExportModal()">⬇ Export CSV</button>
       <div class="filter-tabs">
         <button class="filter-tab active" onclick="filterBuffers('all')">All</button>
         <button class="filter-tab" onclick="filterBuffers('active')">Active</button>
@@ -923,6 +924,105 @@
     <div class="empty-state" id="emptyState" style="display: none;">
       <div class="empty-state-icon">🧪</div>
       <p class="empty-state-text">No buffers found. Add your first buffer solution to get started!</p>
+    </div>
+  </div>
+
+  <!-- Export Modal -->
+  <div id="exportModal" class="modal">
+    <div class="modal-content" style="max-width: 480px;">
+      <div class="modal-header">
+        <h2 class="modal-title">Export to CSV</h2>
+        <button class="close-btn" onclick="closeExportModal()">&times;</button>
+      </div>
+
+      <div class="form-group">
+        <label>Which buffers to export?</label>
+        <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">
+          <label class="radio-label">
+            <input type="radio" name="exportScope" value="all" checked>
+            <span>All buffers (active + archived)</span>
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="exportScope" value="active">
+            <span>Active only (non-archived)</span>
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="exportScope" value="expiring">
+            <span>Expiring soon</span>
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="exportScope" value="expired">
+            <span>Expired</span>
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="exportScope" value="archived">
+            <span>Archived only</span>
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="exportScope" value="current">
+            <span>Current view (matches active filter &amp; search)</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Include columns</label>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.5rem;">
+          <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-family:'JetBrains Mono',monospace; font-size:0.8rem; text-transform:none; letter-spacing:0; color:var(--text-primary);">
+            <input type="checkbox" id="col_name" checked style="width:auto;"> Name
+          </label>
+          <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-family:'JetBrains Mono',monospace; font-size:0.8rem; text-transform:none; letter-spacing:0; color:var(--text-primary);">
+            <input type="checkbox" id="col_lot" checked style="width:auto;"> Lot Number
+          </label>
+          <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-family:'JetBrains Mono',monospace; font-size:0.8rem; text-transform:none; letter-spacing:0; color:var(--text-primary);">
+            <input type="checkbox" id="col_status" checked style="width:auto;"> Status
+          </label>
+          <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-family:'JetBrains Mono',monospace; font-size:0.8rem; text-transform:none; letter-spacing:0; color:var(--text-primary);">
+            <input type="checkbox" id="col_datePrepared" checked style="width:auto;"> Date Prepared
+          </label>
+          <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-family:'JetBrains Mono',monospace; font-size:0.8rem; text-transform:none; letter-spacing:0; color:var(--text-primary);">
+            <input type="checkbox" id="col_expirationDate" checked style="width:auto;"> Expiration Date
+          </label>
+          <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-family:'JetBrains Mono',monospace; font-size:0.8rem; text-transform:none; letter-spacing:0; color:var(--text-primary);">
+            <input type="checkbox" id="col_daysRemaining" checked style="width:auto;"> Days Remaining
+          </label>
+          <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-family:'JetBrains Mono',monospace; font-size:0.8rem; text-transform:none; letter-spacing:0; color:var(--text-primary);">
+            <input type="checkbox" id="col_preparedBy" checked style="width:auto;"> Prepared By
+          </label>
+          <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-family:'JetBrains Mono',monospace; font-size:0.8rem; text-transform:none; letter-spacing:0; color:var(--text-primary);">
+            <input type="checkbox" id="col_volume" checked style="width:auto;"> Volume
+          </label>
+          <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-family:'JetBrains Mono',monospace; font-size:0.8rem; text-transform:none; letter-spacing:0; color:var(--text-primary);">
+            <input type="checkbox" id="col_ph" checked style="width:auto;"> pH
+          </label>
+          <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-family:'JetBrains Mono',monospace; font-size:0.8rem; text-transform:none; letter-spacing:0; color:var(--text-primary);">
+            <input type="checkbox" id="col_concentration" checked style="width:auto;"> Concentration
+          </label>
+          <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-family:'JetBrains Mono',monospace; font-size:0.8rem; text-transform:none; letter-spacing:0; color:var(--text-primary);">
+            <input type="checkbox" id="col_storage" checked style="width:auto;"> Storage
+          </label>
+          <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-family:'JetBrains Mono',monospace; font-size:0.8rem; text-transform:none; letter-spacing:0; color:var(--text-primary);">
+            <input type="checkbox" id="col_location" checked style="width:auto;"> Location
+          </label>
+          <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-family:'JetBrains Mono',monospace; font-size:0.8rem; text-transform:none; letter-spacing:0; color:var(--text-primary);">
+            <input type="checkbox" id="col_sterilization" style="width:auto;"> Sterilization
+          </label>
+          <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-family:'JetBrains Mono',monospace; font-size:0.8rem; text-transform:none; letter-spacing:0; color:var(--text-primary);">
+            <input type="checkbox" id="col_composition" style="width:auto;"> Composition
+          </label>
+          <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-family:'JetBrains Mono',monospace; font-size:0.8rem; text-transform:none; letter-spacing:0; color:var(--text-primary);">
+            <input type="checkbox" id="col_formula" style="width:auto;"> Formula/Recipe
+          </label>
+          <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-family:'JetBrains Mono',monospace; font-size:0.8rem; text-transform:none; letter-spacing:0; color:var(--text-primary);">
+            <input type="checkbox" id="col_archived" style="width:auto;"> Archived
+          </label>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+        <button class="btn btn-primary" style="flex:1;" onclick="runExport()">⬇ Download CSV</button>
+        <button class="btn btn-secondary" style="flex:1;" onclick="closeExportModal()">Cancel</button>
+      </div>
     </div>
   </div>
 
@@ -2215,6 +2315,144 @@ ${buffer.storage || 'N/A'}${buffer.location ? '|' + buffer.location : ''}`;
         closeModal();
       }
     });
+
+    // ── CSV Export ──────────────────────────────────────────────────────────
+
+    function openExportModal() {
+      document.getElementById('exportModal').classList.add('show');
+    }
+
+    function closeExportModal() {
+      document.getElementById('exportModal').classList.remove('show');
+    }
+
+    document.getElementById('exportModal').addEventListener('click', (e) => {
+      if (e.target.id === 'exportModal') closeExportModal();
+    });
+
+    function csvEscape(val) {
+      if (val === null || val === undefined) return '';
+      const str = String(val);
+      // Wrap in quotes if contains comma, quote, or newline
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return '"' + str.replace(/"/g, '""') + '"';
+      }
+      return str;
+    }
+
+    function formatDateForExport(dateStr) {
+      if (!dateStr) return '';
+      const [year, month, day] = dateStr.split('-');
+      if (!year || !month || !day) return dateStr;
+      return new Date(year, month - 1, day).toLocaleDateString();
+    }
+
+    function getExportBuffers(scope) {
+      switch (scope) {
+        case 'all':
+          return [...buffers];
+        case 'active':
+          return buffers.filter(b => !b.archived);
+        case 'expiring':
+          return buffers.filter(b => !b.archived && getBufferStatus(b) === 'expiring-soon');
+        case 'expired':
+          return buffers.filter(b => !b.archived && getBufferStatus(b) === 'expired');
+        case 'archived':
+          return buffers.filter(b => b.archived === true);
+        case 'current': {
+          // Mirror the renderBuffers logic
+          let filtered = [...buffers];
+          if (searchQuery) {
+            const q = searchQuery.toLowerCase();
+            filtered = filtered.filter(b =>
+              b.name.toLowerCase().includes(q) ||
+              b.lotNumber.toLowerCase().includes(q) ||
+              b.preparedBy.toLowerCase().includes(q)
+            );
+          }
+          if (currentFilter === 'archived') {
+            filtered = filtered.filter(b => b.archived === true);
+          } else if (currentFilter === 'all') {
+            filtered = filtered.filter(b => !b.archived);
+          } else {
+            filtered = filtered.filter(b => !b.archived);
+            const fs = currentFilter === 'expiring' ? 'expiring-soon' : currentFilter;
+            filtered = filtered.filter(b => getBufferStatus(b) === fs);
+          }
+          return filtered;
+        }
+        default:
+          return [...buffers];
+      }
+    }
+
+    function runExport() {
+      const scope = document.querySelector('input[name="exportScope"]:checked').value;
+      const rows = getExportBuffers(scope);
+
+      if (rows.length === 0) {
+        alert('No buffers match the selected scope. Nothing to export.');
+        return;
+      }
+
+      // Build column definitions based on checkboxes
+      const colDefs = [
+        { id: 'col_name',           header: 'Name',            fn: b => b.name },
+        { id: 'col_lot',            header: 'Lot Number',      fn: b => b.lotNumber },
+        { id: 'col_status',         header: 'Status',          fn: b => {
+            const s = getBufferStatus(b);
+            return s === 'expiring-soon' ? 'Expiring Soon' : s.charAt(0).toUpperCase() + s.slice(1);
+          }
+        },
+        { id: 'col_datePrepared',   header: 'Date Prepared',   fn: b => formatDateForExport(b.datePrepared) },
+        { id: 'col_expirationDate', header: 'Expiration Date', fn: b => formatDateForExport(b.expirationDate) },
+        { id: 'col_daysRemaining',  header: 'Days Remaining',  fn: b => {
+            const d = getDaysUntilExpiration(b.expirationDate);
+            return d >= 0 ? d : 'EXPIRED';
+          }
+        },
+        { id: 'col_preparedBy',     header: 'Prepared By',     fn: b => b.preparedBy },
+        { id: 'col_volume',         header: 'Volume',          fn: b => b.volume ? `${b.volume} ${b.volumeUnit}` : '' },
+        { id: 'col_ph',             header: 'pH',              fn: b => b.ph || '' },
+        { id: 'col_concentration',  header: 'Concentration',   fn: b => b.concentration || '' },
+        { id: 'col_storage',        header: 'Storage',         fn: b => b.storage || '' },
+        { id: 'col_location',       header: 'Location',        fn: b => b.location || '' },
+        { id: 'col_sterilization',  header: 'Sterilization',   fn: b => b.sterilization || '' },
+        { id: 'col_composition',    header: 'Composition',     fn: b => b.composition || '' },
+        { id: 'col_formula',        header: 'Formula/Recipe',  fn: b => b.formula || '' },
+        { id: 'col_archived',       header: 'Archived',        fn: b => b.archived ? 'Yes' : 'No' },
+      ].filter(col => document.getElementById(col.id)?.checked);
+
+      if (colDefs.length === 0) {
+        alert('Please select at least one column to export.');
+        return;
+      }
+
+      // Build CSV string
+      const headerRow = colDefs.map(c => csvEscape(c.header)).join(',');
+      const dataRows = rows.map(b =>
+        colDefs.map(c => csvEscape(c.fn(b))).join(',')
+      );
+
+      const csv = [headerRow, ...dataRows].join('\n');
+
+      // Trigger download
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const now = new Date();
+      const stamp = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+      a.href = url;
+      a.download = `buffer-tracker-export-${stamp}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      closeExportModal();
+    }
+
+    // ── End CSV Export ───────────────────────────────────────────────────────
 
     // Initialize app when page loads
     init();
