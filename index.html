@@ -1108,7 +1108,17 @@
         </div><!-- /left panel -->
 
         <!-- ── RIGHT PANEL: Label sheet preview ── -->
-        <div style="flex: 1; overflow: auto; background: #2a2f3d; padding: 1.5rem; display: flex; align-items: flex-start; justify-content: center;">
+        <div style="flex: 1; overflow: auto; background: #2a2f3d; padding: 1.5rem; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 0.75rem;">
+
+          <!-- Click-a-position hint (only shown after quick-print) -->
+          <div id="lblClickHint" style="display:none; align-items:center; gap:0.6rem; background:rgba(0,217,255,0.12); border:1px solid var(--accent-primary); border-radius:10px; padding:0.6rem 1rem; width:100%; max-width: calc(816px * 0.54); box-sizing:border-box;">
+            <span style="font-size:1.3rem;">👆</span>
+            <span style="font-family:'JetBrains Mono',monospace; font-size:0.78rem; color:var(--accent-primary); line-height:1.4;">
+              Click any label position on the sheet to stamp it. Click again to clear it.
+            </span>
+            <button onclick="document.getElementById('lblClickHint').style.display='none'" style="margin-left:auto; background:none; border:none; color:var(--text-muted); font-size:1.1rem; cursor:pointer; line-height:1; flex-shrink:0;">✕</button>
+          </div>
+
           <div style="background: #3a4050; padding: 1rem; border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.4);">
             <!-- Clip wrapper: real sheet is 8.5"×11" = 816×1056px at 96dpi, scaled to 54% -->
             <div style="width: calc(816px * 0.54); height: calc(1056px * 0.54); overflow: hidden; position: relative; flex-shrink: 0;">
@@ -2603,27 +2613,41 @@
 
     // ── Open / close ──────────────────────────────────────────────
     let lblPreviousFilter = null;
+    let lblQuickPrintMode = false;  // true when opened from a card button
 
     function openLabelModal(preloadBufferId = null) {
       // Save current filter and switch to 'all' so all QR canvases are in the DOM
       lblPreviousFilter = currentFilter;
       if (currentFilter !== 'all' && currentFilter !== 'active') {
-        // Silently switch filter without touching the tab UI (we restore on close)
         currentFilter = 'all';
         renderBuffers();
+      }
+
+      // If opening from a card quick-print, wipe all existing label content first
+      if (preloadBufferId) {
+        lblContent = new Array(LBL.TOTAL).fill(null);
+        lblSelected.clear();
+        lblCurrentQRDataUrl = null;
+        lblQuickPrintMode = true;
+      } else {
+        lblQuickPrintMode = false;
       }
 
       populateLabelBufferSelect();
       document.getElementById('lblBufferSearch').value = '';
       document.getElementById('lblPrintAllHint').style.display = 'none';
 
-      // Pre-select a buffer if requested (e.g. from card quick-print button)
+      // Pre-select a buffer if requested
       if (preloadBufferId) {
-        document.getElementById('lblBufferSelect').value = preloadBufferId;
-        onLabelBufferSelectChange();
+        selectLabelBuffer(preloadBufferId);
       }
 
       renderLabelSheet();
+
+      // Show/hide the click-a-position hint
+      const hint = document.getElementById('lblClickHint');
+      if (hint) hint.style.display = preloadBufferId ? 'flex' : 'none';
+
       document.getElementById('labelModal').classList.add('show');
     }
 
@@ -2832,11 +2856,31 @@
 
     // ── Selection helpers ─────────────────────────────────────────
     function toggleLabel(i) {
-      if (lblSelected.has(i)) lblSelected.delete(i);
-      else lblSelected.add(i);
+      const hint = document.getElementById('lblClickHint');
+
+      if (lblSelected.has(i)) {
+        // Second click → deselect and clear content
+        lblSelected.delete(i);
+        lblContent[i] = null;
+        const inner = document.getElementById(`lbl-inner-${i}`);
+        if (inner) inner.innerHTML = '';
+        const cell = document.getElementById(`lbl-cell-${i}`);
+        if (cell) cell.classList.remove('selected');
+      } else {
+        // First click → select and apply current content
+        lblSelected.add(i);
+        const content = buildContentFromInputs();
+        lblContent[i] = content ? { ...content } : null;
+        const inner = document.getElementById(`lbl-inner-${i}`);
+        if (inner) inner.innerHTML = renderCellHTML(i);
+        const cell = document.getElementById(`lbl-cell-${i}`);
+        if (cell) cell.classList.add('selected');
+      }
+
+      // Dismiss the hint on first interaction
+      if (hint && hint.style.display !== 'none') hint.style.display = 'none';
+
       updateSelectionUI();
-      // Apply current text to newly selected
-      refreshLabelContent();
     }
     function selectAllLabels() {
       for (let i = 0; i < LBL.TOTAL; i++) lblSelected.add(i);
