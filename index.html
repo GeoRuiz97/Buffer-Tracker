@@ -1914,24 +1914,42 @@
           }
         };
         
-        // Create compact QR code text with abbreviations to fit all info
-        const qrText = `${buffer.name || 'Unknown'}
-LOT:${buffer.lotNumber || 'N/A'}
-${statusText}
-${buffer.volume || '?'}${buffer.volumeUnit || ''}${buffer.concentration ? '|' + buffer.concentration : ''}${buffer.ph ? '|pH' + buffer.ph : ''}
-By:${buffer.preparedBy || 'Unknown'}
-Prep:${formatDate(buffer.datePrepared)}
-Exp:${formatDate(buffer.expirationDate)}
-${buffer.storage || 'N/A'}${buffer.location ? '|' + buffer.location : ''}`;
-        
-        new QRCode(container, {
-          text: qrText,
-          width: 150,
-          height: 150,
-          colorDark: "#0a0e1a",
-          colorLight: "#ffffff",
-          correctLevel: QRCode.CorrectLevel.L // Low error correction to fit more data
-        });
+        // Build QR text from essential fields only (composition/formula excluded — too long)
+        // Keep keys short to maximise data capacity at Level L (1088 chars max)
+        const qrLines = [
+          `N:${(buffer.name || 'Unknown').substring(0, 40)}`,
+          `LOT:${buffer.lotNumber || 'N/A'}`,
+          `ST:${statusText}`,
+          `VOL:${buffer.volume || '?'}${buffer.volumeUnit || ''}${buffer.concentration ? '|'+buffer.concentration : ''}${buffer.ph ? '|pH'+buffer.ph : ''}`,
+          `BY:${(buffer.preparedBy || 'Unknown').substring(0, 20)}`,
+          `PRE:${formatDate(buffer.datePrepared)}`,
+          `EXP:${formatDate(buffer.expirationDate)}`,
+          `STR:${(buffer.storage || 'N/A').substring(0, 20)}${buffer.location ? '|'+(buffer.location).substring(0,20) : ''}`,
+        ];
+        const qrText = qrLines.join('\n');
+
+        // Try rendering; if still too long, drop lower-priority lines one at a time
+        const tryRender = (lines) => {
+          const text = lines.join('\n');
+          try {
+            new QRCode(container, {
+              text,
+              width: 150,
+              height: 150,
+              colorDark: "#0a0e1a",
+              colorLight: "#ffffff",
+              correctLevel: QRCode.CorrectLevel.L,
+            });
+          } catch (e) {
+            if (e.message && e.message.includes('overflow') && lines.length > 3) {
+              container.innerHTML = '';
+              tryRender(lines.slice(0, -1)); // drop last line and retry
+            } else {
+              throw e;
+            }
+          }
+        };
+        tryRender(qrLines);
       } catch (error) {
         console.error('Error generating QR code:', error, buffer);
         container.innerHTML = '<p style="color: var(--accent-danger); text-align: center; padding: 1rem; font-size: 0.85rem;">Error: ' + (error.message || 'Unknown error') + '</p>';
