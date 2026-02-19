@@ -2822,9 +2822,18 @@
       // Grab the already-rendered QR canvas from the buffer card
       lblCurrentQRDataUrl = getLabelQRDataUrl(id);
 
-      // Deselect all — stamped labels stay as-is; next click will stamp with the new buffer
-      lblSelected.clear();
-      updateSelectionUI();
+      // If labels are already selected, stamp them immediately
+      if (lblSelected.size > 0) {
+        const content = buildContentFromInputs();
+        lblSelected.forEach(i => {
+          lblContent[i] = content ? { ...content } : null;
+          const inner = document.getElementById(`lbl-inner-${i}`);
+          if (inner) inner.innerHTML = renderCellHTML(i);
+        });
+        // Then deselect so they won't be overwritten if user picks another buffer
+        lblSelected.clear();
+        updateSelectionUI();
+      }
     }
 
     // ── Build content object from current inputs ───────────────────
@@ -2901,6 +2910,11 @@
       lblSelected.clear();
       lblContent = new Array(LBL.TOTAL).fill(null);
       lblCurrentQRDataUrl = null;
+      // Reset buffer selection and input fields
+      document.getElementById('lblBufferSelect').value = '';
+      selectLabelBuffer('');
+      ['lblLine1','lblLine2','lblLine3','lblLine4'].forEach(f => document.getElementById(f).value = '');
+      document.getElementById('lblPrintAllHint').style.display = 'none';
       updateSelectionUI();
       for (let i = 0; i < LBL.TOTAL; i++) {
         const el = document.getElementById(`lbl-cell-${i}`);
