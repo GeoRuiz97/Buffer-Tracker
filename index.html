@@ -2625,14 +2625,19 @@
         renderBuffers();
       }
 
+      // Always start with a clean slate
+      lblContent = new Array(LBL.TOTAL).fill(null);
+      lblSelected.clear();
+      lblCurrentQRDataUrl = null;
+
       // If opening from a card quick-print, wipe all existing label content first
       if (preloadBufferId) {
-        lblContent = new Array(LBL.TOTAL).fill(null);
-        lblSelected.clear();
-        lblCurrentQRDataUrl = null;
         lblQuickPrintMode = true;
       } else {
         lblQuickPrintMode = false;
+        // Clear the text input fields and buffer selection
+        ['lblLine1','lblLine2','lblLine3','lblLine4'].forEach(f => document.getElementById(f).value = '');
+        document.getElementById('lblBufferSelect').value = '';
       }
 
       populateLabelBufferSelect();
