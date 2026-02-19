@@ -884,7 +884,7 @@
     .lbl-cell {
       position: absolute;
       box-sizing: border-box;
-      border: 1px dashed rgba(0,0,0,0.15);
+      border: 1px dashed rgba(0,0,0,0.4);
       cursor: pointer;
       transition: background 0.15s, border-color 0.15s;
       display: flex;
@@ -896,11 +896,11 @@
     }
     .lbl-cell:hover {
       background: rgba(0, 180, 230, 0.12) !important;
-      border-color: rgba(0, 180, 230, 0.5) !important;
+      border-color: rgba(0, 120, 200, 0.6) !important;
     }
     .lbl-cell.selected {
       background: rgba(173, 216, 255, 0.45) !important;
-      border: 1.5px solid rgba(0, 120, 200, 0.7) !important;
+      border: 1.5px solid rgba(0, 100, 180, 0.8) !important;
     }
     .lbl-cell-inner {
       width: 100%;
@@ -1124,19 +1124,19 @@
           <!-- Zoom controls -->
           <div style="display:flex; align-items:center; gap:0.5rem; font-family:'JetBrains Mono',monospace; font-size:0.78rem; color:var(--text-secondary);">
             <button onclick="adjustZoom(-0.1)" style="background:var(--bg-card); border:1px solid var(--border); color:var(--text-primary); border-radius:6px; width:28px; height:28px; cursor:pointer; font-size:1rem; display:flex; align-items:center; justify-content:center; transition:border-color 0.2s;" onmouseover="this.style.borderColor='var(--accent-primary)'" onmouseout="this.style.borderColor='var(--border)'">−</button>
-            <span id="lblZoomLabel" style="min-width:38px; text-align:center;">75%</span>
+            <span id="lblZoomLabel" style="min-width:38px; text-align:center;">90%</span>
             <button onclick="adjustZoom(0.1)" style="background:var(--bg-card); border:1px solid var(--border); color:var(--text-primary); border-radius:6px; width:28px; height:28px; cursor:pointer; font-size:1rem; display:flex; align-items:center; justify-content:center; transition:border-color 0.2s;" onmouseover="this.style.borderColor='var(--accent-primary)'" onmouseout="this.style.borderColor='var(--border)'">+</button>
-            <button onclick="setZoom(0.54)" style="background:var(--bg-card); border:1px solid var(--border); color:var(--text-muted); border-radius:6px; padding:0 8px; height:28px; cursor:pointer; font-size:0.72rem; transition:border-color 0.2s;" onmouseover="this.style.borderColor='var(--accent-primary)'" onmouseout="this.style.borderColor='var(--border)'">Fit</button>
+            <button onclick="setZoom(0.9)" style="background:var(--bg-card); border:1px solid var(--border); color:var(--text-muted); border-radius:6px; padding:0 8px; height:28px; cursor:pointer; font-size:0.72rem; transition:border-color 0.2s;" onmouseover="this.style.borderColor='var(--accent-primary)'" onmouseout="this.style.borderColor='var(--border)'">Fit</button>
             <button onclick="setZoom(1)" style="background:var(--bg-card); border:1px solid var(--border); color:var(--text-muted); border-radius:6px; padding:0 8px; height:28px; cursor:pointer; font-size:0.72rem; transition:border-color 0.2s;" onmouseover="this.style.borderColor='var(--accent-primary)'" onmouseout="this.style.borderColor='var(--border)'">100%</button>
           </div>
 
           <!-- Sheet wrapper — clips the scaled preview -->
           <div id="lblSheetOuter" style="background: #3a4050; padding: 1rem; border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); flex-shrink:0;">
-            <div id="lblSheetClip" style="width: calc(816px * 0.75); height: calc(1056px * 0.75); overflow: hidden; position: relative;">
+            <div id="lblSheetClip" style="width: calc(816px * 0.9); height: calc(1056px * 0.9); overflow: hidden; position: relative;">
               <div id="lblSheetPreview" style="
                 width: 816px;
                 height: 1056px;
-                transform: scale(0.75);
+                transform: scale(0.9);
                 transform-origin: top left;
                 background: white;
                 position: relative;
@@ -3142,7 +3142,7 @@
     // ═══════════════════════════════════════════════════════════════
 
     // ── Sheet zoom controls ───────────────────────────────────────
-    let lblZoom = 0.75;
+    let lblZoom = 0.9;
 
     function setZoom(z) {
       lblZoom = Math.min(1.5, Math.max(0.3, z));
