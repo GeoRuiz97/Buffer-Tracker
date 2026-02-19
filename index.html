@@ -1819,7 +1819,16 @@
               </div>
               ` : ''}
             </div>
-            <div class="qr-code-container" id="qr-${buffer.id}"></div>
+            <div style="position:relative;">
+              <div class="qr-code-container" id="qr-${buffer.id}"></div>
+              ${!buffer.archived ? `
+              <button onclick="openLabelModal('${buffer.id}')" title="Quick Print Label"
+                style="position:absolute; top:6px; right:6px; background:var(--accent-primary); border:none; border-radius:6px; padding:4px 7px; cursor:pointer; font-size:0.75rem; line-height:1; color:var(--bg-primary); font-family:'JetBrains Mono',monospace; font-weight:700; opacity:0.85; transition:opacity 0.2s, transform 0.2s;"
+                onmouseover="this.style.opacity='1';this.style.transform='scale(1.08)'"
+                onmouseout="this.style.opacity='0.85';this.style.transform='scale(1)'">
+                🏷 Print
+              </button>` : ''}
+            </div>
             <div class="buffer-actions">
               ${!buffer.archived ? `
                 <button class="btn btn-secondary btn-small" onclick="downloadQR('${buffer.id}')">QR</button>
@@ -2554,13 +2563,42 @@ ${buffer.storage || 'N/A'}${buffer.location ? '|' + buffer.location : ''}`;
     let lblCurrentQRDataUrl = null;  // data URL for current buffer's QR code
 
     // ── Open / close ──────────────────────────────────────────────
-    function openLabelModal() {
+    let lblPreviousFilter = null;
+
+    function openLabelModal(preloadBufferId = null) {
+      // Save current filter and switch to 'all' so all QR canvases are in the DOM
+      lblPreviousFilter = currentFilter;
+      if (currentFilter !== 'all' && currentFilter !== 'active') {
+        // Silently switch filter without touching the tab UI (we restore on close)
+        currentFilter = 'all';
+        renderBuffers();
+      }
+
       populateLabelBufferSelect();
+
+      // Pre-select a buffer if requested (e.g. from card quick-print button)
+      if (preloadBufferId) {
+        document.getElementById('lblBufferSelect').value = preloadBufferId;
+        updateLabelPreviewFromBuffer();
+      }
+
       renderLabelSheet();
       document.getElementById('labelModal').classList.add('show');
     }
+
     function closeLabelModal() {
       document.getElementById('labelModal').classList.remove('show');
+
+      // Restore previous filter if we changed it
+      if (lblPreviousFilter !== null && lblPreviousFilter !== currentFilter) {
+        currentFilter = lblPreviousFilter;
+        renderBuffers();
+        // Re-sync the active tab highlight
+        document.querySelectorAll('.filter-tab').forEach(tab => {
+          tab.classList.toggle('active', tab.textContent.trim().toLowerCase().startsWith(currentFilter === 'expiring' ? 'expiring' : currentFilter));
+        });
+      }
+      lblPreviousFilter = null;
     }
     document.getElementById('labelModal').addEventListener('click', e => {
       if (e.target.id === 'labelModal') closeLabelModal();
