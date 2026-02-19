@@ -2654,10 +2654,13 @@ ${buffer.storage || 'N/A'}${buffer.location ? '|' + buffer.location : ''}`;
     }
     function clearAllLabels() {
       lblSelected.clear();
+      lblContent = new Array(LBL.TOTAL).fill(null);
       updateSelectionUI();
       for (let i = 0; i < LBL.TOTAL; i++) {
         const el = document.getElementById(`lbl-cell-${i}`);
         if (el) el.classList.remove('selected');
+        const inner = document.getElementById(`lbl-inner-${i}`);
+        if (inner) inner.innerHTML = '';
       }
     }
     function updateSelectionUI() {
