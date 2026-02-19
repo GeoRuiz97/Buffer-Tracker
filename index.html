@@ -2877,23 +2877,36 @@
     function toggleLabel(i) {
       const hint = document.getElementById('lblClickHint');
 
-      if (lblSelected.has(i)) {
-        // Second click → deselect and clear content
-        lblSelected.delete(i);
+      if (lblContent[i]) {
+        // Label is already stamped → clear it
         lblContent[i] = null;
+        lblSelected.delete(i);
         const inner = document.getElementById(`lbl-inner-${i}`);
         if (inner) inner.innerHTML = '';
         const cell = document.getElementById(`lbl-cell-${i}`);
         if (cell) cell.classList.remove('selected');
-      } else {
-        // First click → select and apply current content
-        lblSelected.add(i);
-        const content = buildContentFromInputs();
-        lblContent[i] = content ? { ...content } : null;
-        const inner = document.getElementById(`lbl-inner-${i}`);
-        if (inner) inner.innerHTML = renderCellHTML(i);
+      } else if (lblSelected.has(i)) {
+        // Label is empty but pending (highlighted, waiting for buffer) → deselect
+        lblSelected.delete(i);
         const cell = document.getElementById(`lbl-cell-${i}`);
-        if (cell) cell.classList.add('selected');
+        if (cell) cell.classList.remove('selected');
+      } else {
+        // Label is empty and not selected → select it and stamp immediately if buffer ready
+        const content = buildContentFromInputs();
+        if (content) {
+          // Buffer already chosen — stamp right away, don't hold selection
+          lblContent[i] = { ...content };
+          lblSelected.delete(i);
+          const inner = document.getElementById(`lbl-inner-${i}`);
+          if (inner) inner.innerHTML = renderCellHTML(i);
+          const cell = document.getElementById(`lbl-cell-${i}`);
+          if (cell) cell.classList.add('selected');
+        } else {
+          // No buffer yet — just highlight as pending
+          lblSelected.add(i);
+          const cell = document.getElementById(`lbl-cell-${i}`);
+          if (cell) cell.classList.add('selected');
+        }
       }
 
       // Dismiss the hint on first interaction
