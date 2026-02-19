@@ -1478,34 +1478,47 @@
       
       if (!formulaString) return;
       
-      // Parse formula string (format: "NaCl: 8.0g (HDRM: 12345) (Lot: ABC123)")
-      const ingredients = formulaString.split(',').map(s => s.trim());
+      // Split on ', ' only when outside parentheses
+      const ingredients = [];
+      let depth = 0, current = '';
+      for (let i = 0; i < formulaString.length; i++) {
+        const ch = formulaString[i];
+        if (ch === '(') depth++;
+        else if (ch === ')') depth--;
+        if (ch === ',' && depth === 0 && formulaString[i+1] === ' ') {
+          ingredients.push(current.trim());
+          current = '';
+          i++; // skip the space
+        } else {
+          current += ch;
+        }
+      }
+      if (current.trim()) ingredients.push(current.trim());
       
       ingredients.forEach(ingredient => {
-        const parts = ingredient.split(':').map(s => s.trim());
-        if (parts.length === 2) {
-          const name = parts[0];
-          let amount = parts[1];
-          let hdrm = '';
-          let lot = '';
-          
-          // Extract HDRM number if exists
-          const hdrmMatch = amount.match(/\(HDRM:\s*([^)]+)\)/);
-          if (hdrmMatch) {
-            hdrm = hdrmMatch[1].trim();
-            amount = amount.replace(/\s*\(HDRM:\s*[^)]+\)/, '');
-          }
-          
-          // Extract Lot number if exists
-          const lotMatch = amount.match(/\(Lot:\s*([^)]+)\)/);
-          if (lotMatch) {
-            lot = lotMatch[1].trim();
-            amount = amount.replace(/\s*\(Lot:\s*[^)]+\)/, '');
-          }
-          
-          amount = amount.trim();
-          addIngredient(name, amount, hdrm, lot);
+        // Extract name (everything before first colon)
+        const colonIdx = ingredient.indexOf(':');
+        if (colonIdx === -1) return;
+        const name = ingredient.substring(0, colonIdx).trim();
+        let rest = ingredient.substring(colonIdx + 1).trim();
+        let hdrm = '';
+        let lot = '';
+        
+        // Extract HDRM number if exists
+        const hdrmMatch = rest.match(/\(HDRM:\s*([^)]+)\)/);
+        if (hdrmMatch) {
+          hdrm = hdrmMatch[1].trim();
+          rest = rest.replace(/\s*\(HDRM:\s*[^)]+\)/, '');
         }
+        
+        // Extract Lot number if exists
+        const lotMatch = rest.match(/\(Lot:\s*([^)]+)\)/);
+        if (lotMatch) {
+          lot = lotMatch[1].trim();
+          rest = rest.replace(/\s*\(Lot:\s*[^)]+\)/, '');
+        }
+        
+        addIngredient(name, rest.trim(), hdrm, lot);
       });
     }
 
@@ -1823,8 +1836,8 @@
                     ${buffer.formula.split(',').map(ing => {
                       const nameMatch = ing.match(/^([^:]+):/);
                       const amountMatch = ing.match(/:\s*([^(]+)/);
-                      const hdrmMatch = ing.match(/\\(HDRM:\\s*([^)]+)\\)/);
-                      const lotMatch = ing.match(/\\(Lot:\\s*([^)]+)\\)/);
+                      const hdrmMatch = ing.match(/\(HDRM:\s*([^)]+)\)/);
+                      const lotMatch = ing.match(/\(Lot:\s*([^)]+)\)/);
                       
                       return `<tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
                         <td style="padding: 0.4rem; color: var(--text-primary);">${nameMatch ? nameMatch[1].trim() : 'Unknown'}</td>
@@ -2465,8 +2478,8 @@
                   ${buffer.formula.split(',').map(ing => {
                     const nameMatch = ing.match(/^([^:]+):/);
                     const amountMatch = ing.match(/:\s*([^(]+)/);
-                    const hdrmMatch = ing.match(/\\(HDRM:\\s*([^)]+)\\)/);
-                    const lotMatch = ing.match(/\\(Lot:\\s*([^)]+)\\)/);
+                    const hdrmMatch = ing.match(/\(HDRM:\s*([^)]+)\)/);
+                    const lotMatch = ing.match(/\(Lot:\s*([^)]+)\)/);
                     
                     return `<tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
                       <td style="padding: 0.4rem; color: var(--text-primary);">${nameMatch ? nameMatch[1].trim() : 'Unknown'}</td>
@@ -2510,6 +2523,9 @@
     // Handle form submission
     document.getElementById('bufferForm').addEventListener('submit', async (e) => {
       e.preventDefault();
+
+      // Ensure formula hidden field is up to date before reading it
+      updateFormulaField();
 
       const name = document.getElementById('bufferName').value;
       const lotNumber = document.getElementById('lotNumber').value;
