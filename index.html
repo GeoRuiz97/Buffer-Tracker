@@ -1422,6 +1422,11 @@
         </div>
 
         <div class="form-group">
+          <label for="notes">Notes / Comments</label>
+          <textarea id="notes" placeholder="Any additional notes, observations, or comments about this buffer…" style="min-height: 100px;"></textarea>
+        </div>
+
+        <div class="form-group">
           <button type="submit" class="btn btn-primary" style="width: 100%;">Save Buffer</button>
         </div>
       </form>
@@ -1903,6 +1908,9 @@
               </div>
               ` : ''}
             </div>
+            ${buffer.notes ? `
+            <div style="margin-top:0.75rem; padding:0.75rem; background:rgba(124,58,237,0.08); border:1px solid rgba(124,58,237,0.25); border-radius:8px; font-size:0.9rem; color:var(--text-secondary); line-height:1.5; white-space:pre-wrap;">
+              <span style="display:block; font-family:'JetBrains Mono',monospace; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--accent-secondary); margin-bottom:0.35rem;">📝 Notes</span>${buffer.notes}</div>` : ''}
             <div style="position:relative; margin-top:auto;">
               <div class="qr-code-container" id="qr-${buffer.id}"></div>
               ${!buffer.archived ? `
@@ -2215,7 +2223,23 @@
       drawRow('Storage Condition', buffer.storage);
       drawRow('Physical Location', buffer.location || 'N/A');
       
-      yPos += 5;
+      // Notes section
+      if (buffer.notes) {
+        yPos += 5;
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(41, 128, 185);
+        doc.text('NOTES / COMMENTS', margin, yPos);
+        doc.setTextColor(0, 0, 0);
+        yPos += 7;
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        const noteLines = doc.splitTextToSize(buffer.notes, contentWidth - 4);
+        doc.setDrawColor(200, 200, 200);
+        doc.rect(margin, yPos - 5, contentWidth, noteLines.length * 6 + 4);
+        doc.text(noteLines, margin + 2, yPos);
+        yPos += noteLines.length * 6 + 4;
+      }
       
       // Footer with color
       const footerY = 280;
@@ -2272,8 +2296,7 @@
       document.getElementById('preparedBy').value = buffer.preparedBy;
       document.getElementById('storage').value = buffer.storage;
       document.getElementById('location').value = buffer.location || '';
-      
-      // Set today's date and generate new lot number
+      document.getElementById('notes').value = buffer.notes || '';
       document.getElementById('datePrepared').value = '';
       document.getElementById('lotNumber').value = 'Select date prepared first';
       document.getElementById('expirationDate').value = '';
@@ -2342,6 +2365,7 @@
       document.getElementById('expirationDate').value = buffer.expirationDate;
       document.getElementById('storage').value = buffer.storage;
       document.getElementById('location').value = buffer.location || '';
+      document.getElementById('notes').value = buffer.notes || '';
       
       document.querySelector('input[name="expirationMethod"][value="date"]').checked = true;
       toggleExpirationFields();
@@ -2544,6 +2568,11 @@
               </table>
             </div>
             ` : ''}
+            ${buffer.notes ? `
+            <div class="info-row" style="display:block; padding:0.75rem; background:rgba(124,58,237,0.08); border:1px solid rgba(124,58,237,0.25); border-radius:8px;">
+              <span class="info-label" style="display:block; margin-bottom:0.35rem; color:var(--accent-secondary);">📝 Notes</span>
+              <span style="font-family:'Crimson Pro',serif; font-size:0.95rem; color:var(--text-secondary); white-space:pre-wrap;">${buffer.notes}</span>
+            </div>` : ''}
           </div>
         </div>
       `;
@@ -2592,6 +2621,7 @@
       const datePrepared = document.getElementById('datePrepared').value; // Keep as YYYY-MM-DD string
       const storage = document.getElementById('storage').value;
       const location = document.getElementById('location').value;
+      const notes = document.getElementById('notes').value;
       const method = document.querySelector('input[name="expirationMethod"]:checked').value;
 
       let expirationDate;
@@ -2625,6 +2655,7 @@
         expirationDate,
         storage,
         location,
+        notes,
         createdAt: editingId ? buffers.find(b => b.id === editingId)?.createdAt || new Date().toISOString() : new Date().toISOString()
       };
 
