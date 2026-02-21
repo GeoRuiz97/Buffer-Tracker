@@ -1124,38 +1124,7 @@
       transition: color 0.3s ease;
     }
     #cardCount.highlighted { color: var(--accent-primary); }
-  
-    /* Days Remaining: label outside, value in a right-aligned badge */
-    .days-remaining-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.75rem;
-      width: 100%;
-      white-space: nowrap; /* keep on one line */
-    }
-    .days-remaining-label {
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      font-size: 0.75rem;
-      font-family: 'JetBrains Mono', monospace;
-      flex: 0 0 auto;
-    }
-    .days-remaining-badge {
-      background: var(--bg-secondary);
-      border-radius: 8px;
-      padding: 0.35rem 0.75rem;
-      font-family: 'JetBrains Mono', monospace;
-      font-weight: 700;
-      font-size: 1.25rem;
-      color: var(--text-primary);
-      flex: 0 0 auto;
-      min-width: 4.5rem;
-      text-align: right;
-    }
-
-</style>
+  </style>
 </head>
 <body>
   <div class="container">
@@ -2197,9 +2166,9 @@
                 })()}</span>
               </div>
               <div class="info-row" style="display:flex; flex-direction:column; padding:0; overflow:hidden; gap:0;">
-                <div class="days-remaining-row">
-                  <span class="days-remaining-label">Days Remaining</span>
-                  <span class="days-remaining-badge ${daysClass}">${daysRemaining >= 0 ? daysRemaining : 'EXPIRED'}</span>
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:0.5rem;">
+                  <span class="info-label">Days Remaining</span>
+                  <span class="info-value days-remaining ${daysClass}">${daysRemaining >= 0 ? daysRemaining : 'EXPIRED'}</span>
                 </div>
                 ${(() => {
                   const prepDate  = new Date(buffer.datePrepared);
@@ -2903,9 +2872,9 @@
                 return new Date(year, month - 1, day).toLocaleDateString();
               })()}</span>
             </div>
-            <div class="days-remaining-row">
-              <span class="days-remaining-label">Days Remaining</span>
-              <span class="days-remaining-badge ${daysClass}">${daysRemaining >= 0 ? daysRemaining : 'EXPIRED'}</span>
+            <div class="info-row">
+              <span class="info-label">Days Remaining</span>
+              <span class="info-value days-remaining ${daysClass}">${daysRemaining >= 0 ? daysRemaining : 'EXPIRED'}</span>
             </div>
             <div class="info-row">
               <span class="info-label">Storage</span>
@@ -3581,38 +3550,7 @@
     .label-cell { width: 2.625in; height: 1in; overflow: hidden; }
     .label-inner { width: 100%; height: 100%; display: flex; }
     @media print { html, body { width: 8.5in; height: 11in; } }
-  
-    /* Days Remaining: label outside, value in a right-aligned badge */
-    .days-remaining-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.75rem;
-      width: 100%;
-      white-space: nowrap; /* keep on one line */
-    }
-    .days-remaining-label {
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      font-size: 0.75rem;
-      font-family: 'JetBrains Mono', monospace;
-      flex: 0 0 auto;
-    }
-    .days-remaining-badge {
-      background: var(--bg-secondary);
-      border-radius: 8px;
-      padding: 0.35rem 0.75rem;
-      font-family: 'JetBrains Mono', monospace;
-      font-weight: 700;
-      font-size: 1.25rem;
-      color: var(--text-primary);
-      flex: 0 0 auto;
-      min-width: 4.5rem;
-      text-align: right;
-    }
-
-</style>
+  </style>
 </head>
 <body>
   <div class="sheet">
