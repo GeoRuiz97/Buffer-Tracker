@@ -1027,6 +1027,78 @@
     #confirmMsg   { font-family: 'Crimson Pro', serif; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 1.5rem; line-height: 1.5; }
     #confirmBtns  { display: flex; gap: 0.75rem; justify-content: center; }
 
+    /* ── DASHBOARD STAT CARDS ── */
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0.03);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .stat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
+    .stat-card:hover::after { opacity: 1; }
+    .stat-card.active-filter { border-width: 2px; box-shadow: 0 0 0 3px rgba(0,217,255,0.15); }
+    .stat-card.active-filter.color-total    { border-color: var(--accent-primary); box-shadow: 0 0 0 3px rgba(0,217,255,0.15); }
+    .stat-card.active-filter.color-active   { border-color: var(--accent-success); box-shadow: 0 0 0 3px rgba(16,185,129,0.2); }
+    .stat-card.active-filter.color-expiring { border-color: var(--accent-warning); box-shadow: 0 0 0 3px rgba(251,191,36,0.2); }
+    .stat-card.active-filter.color-expired  { border-color: var(--accent-danger);  box-shadow: 0 0 0 3px rgba(239,68,68,0.2); }
+    .stat-card-hint {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-top: 0.35rem;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .stat-card:hover .stat-card-hint { opacity: 1; }
+
+    /* ── SORT CONTROLS ── */
+    .sort-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+    .sort-btn {
+      padding: 0.35rem 0.8rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg-secondary);
+      color: var(--text-secondary);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .sort-btn:hover { border-color: var(--accent-primary); color: var(--accent-primary); }
+    .sort-btn.sort-active {
+      background: var(--accent-primary);
+      border-color: var(--accent-primary);
+      color: var(--bg-primary);
+    }
+
     /* ── CARD COUNT ── */
     #cardCount {
       font-family: 'JetBrains Mono', monospace;
@@ -1056,21 +1128,25 @@
 
     <!-- Dashboard Stats -->
     <div id="dashboard" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
-      <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; text-align: center;">
+      <div class="stat-card color-total" id="statCardAll" onclick="filterFromCard('all')" title="Show all active buffers">
         <div style="font-size: 2.5rem; font-weight: 700; color: var(--accent-primary); font-family: 'JetBrains Mono', monospace;" id="totalBuffers">0</div>
         <div style="color: var(--text-secondary); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.5rem;">Total Buffers</div>
+        <div class="stat-card-hint">Click to show all</div>
       </div>
-      <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; text-align: center;">
+      <div class="stat-card color-active" id="statCardActive" onclick="filterFromCard('active')" title="Show only active buffers">
         <div style="font-size: 2.5rem; font-weight: 700; color: var(--accent-success); font-family: 'JetBrains Mono', monospace;" id="activeBuffers">0</div>
         <div style="color: var(--text-secondary); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.5rem;">Active</div>
+        <div class="stat-card-hint">Click to filter</div>
       </div>
-      <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; text-align: center;">
+      <div class="stat-card color-expiring" id="statCardExpiring" onclick="filterFromCard('expiring')" title="Show expiring soon buffers">
         <div style="font-size: 2.5rem; font-weight: 700; color: var(--accent-warning); font-family: 'JetBrains Mono', monospace;" id="expiringBuffers">0</div>
         <div style="color: var(--text-secondary); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.5rem;">Expiring Soon</div>
+        <div class="stat-card-hint">Click to filter</div>
       </div>
-      <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; text-align: center;">
+      <div class="stat-card color-expired" id="statCardExpired" onclick="filterFromCard('expired')" title="Show expired buffers">
         <div style="font-size: 2.5rem; font-weight: 700; color: var(--accent-danger); font-family: 'JetBrains Mono', monospace;" id="expiredBuffers">0</div>
         <div style="color: var(--text-secondary); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.5rem;">Expired</div>
+        <div class="stat-card-hint">Click to filter</div>
       </div>
     </div>
 
@@ -1095,7 +1171,15 @@
              oninput="performSearch()">
     </div>
 
-    <div id="cardCount"></div>
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 0.75rem; margin-bottom: 0.25rem; flex-wrap: wrap; gap: 0.5rem;">
+      <div id="cardCount"></div>
+      <div class="sort-controls">
+        <span>Sort:</span>
+        <button class="sort-btn" id="sortExpiry"   onclick="setSort('expiry')"   >📅 Expiry</button>
+        <button class="sort-btn" id="sortName"     onclick="setSort('name')"     >🔤 Name</button>
+        <button class="sort-btn" id="sortPrepared" onclick="setSort('prepared')" >🧪 Date Prepared</button>
+      </div>
+    </div>
     <div id="bufferGrid" class="buffer-grid"></div>
 
     <div class="empty-state" id="emptyState" style="display: none;">
@@ -1558,6 +1642,7 @@
 
     let buffers = [];
     let currentFilter = 'all';
+    let currentSort = 'expiry';
     let editingId = null;
     let searchQuery = '';
     let ingredientCounter = 0;
@@ -1749,6 +1834,10 @@
 
     // Initialize app
     async function init() {
+      // Mark default sort button active
+      const defaultSortBtn = document.getElementById('sortExpiry');
+      if (defaultSortBtn) defaultSortBtn.classList.add('sort-active');
+
       // Set up real-time listener for buffers
       buffersCollection.onSnapshot((snapshot) => {
         buffers = [];
@@ -1853,6 +1942,14 @@
       }
     }
 
+    // Highlight the active dashboard stat card
+    function updateStatCardHighlight() {
+      const map = { all: 'statCardAll', active: 'statCardActive', expiring: 'statCardExpiring', expired: 'statCardExpired' };
+      document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('active-filter'));
+      const el = document.getElementById(map[currentFilter]);
+      if (el) el.classList.add('active-filter');
+    }
+
     // Update dashboard statistics
     function updateDashboard() {
       // Only count non-archived buffers
@@ -1867,6 +1964,7 @@
       document.getElementById('activeBuffers').textContent = active;
       document.getElementById('expiringBuffers').textContent = expiring;
       document.getElementById('expiredBuffers').textContent = expired;
+      updateStatCardHighlight();
     }
 
     // Update card count indicator
@@ -1925,8 +2023,15 @@
 
       emptyState.style.display = 'none';
 
-      // Sort by expiration date
-      filteredBuffers.sort((a, b) => new Date(a.expirationDate) - new Date(b.expirationDate));
+      // Sort based on currentSort
+      if (currentSort === 'name') {
+        filteredBuffers.sort((a, b) => a.name.localeCompare(b.name));
+      } else if (currentSort === 'prepared') {
+        filteredBuffers.sort((a, b) => new Date(b.datePrepared) - new Date(a.datePrepared));
+      } else {
+        // default: expiry
+        filteredBuffers.sort((a, b) => new Date(a.expirationDate) - new Date(b.expirationDate));
+      }
 
       // ARCHIVED BUFFERS: Render as list view
       if (currentFilter === 'archived') {
@@ -2424,13 +2529,35 @@
         tab.classList.remove('active');
       });
       event.target.classList.add('active');
-      
+      updateStatCardHighlight();
       renderBuffers();
     }
 
     // Search function
     function performSearch() {
       searchQuery = document.getElementById('searchInput').value;
+      renderBuffers();
+    }
+
+    // Sort controls
+    function setSort(sortKey) {
+      currentSort = sortKey;
+      document.querySelectorAll('.sort-btn').forEach(btn => btn.classList.remove('sort-active'));
+      const map = { expiry: 'sortExpiry', name: 'sortName', prepared: 'sortPrepared' };
+      const el = document.getElementById(map[sortKey]);
+      if (el) el.classList.add('sort-active');
+      renderBuffers();
+    }
+
+    // Filter from dashboard stat card click
+    function filterFromCard(filter) {
+      currentFilter = filter;
+      // Sync the filter tabs
+      document.querySelectorAll('.filter-tab').forEach(tab => tab.classList.remove('active'));
+      const tabMap = { all: 0, active: 1, expiring: 2, expired: 3 };
+      const tabs = document.querySelectorAll('.filter-tab');
+      if (tabs[tabMap[filter]] !== undefined) tabs[tabMap[filter]].classList.add('active');
+      updateStatCardHighlight();
       renderBuffers();
     }
 
