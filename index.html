@@ -1884,6 +1884,9 @@
         : `Showing ${count} ${label}${count !== 1 ? 's' : ''}${searchSuffix}`;
       el.classList.toggle('highlighted', !!searchQuery || currentFilter !== 'all');
     }
+
+    // Render buffers
+    function renderBuffers() {
       const grid = document.getElementById('bufferGrid');
       const emptyState = document.getElementById('emptyState');
       
