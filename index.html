@@ -2139,9 +2139,26 @@
                   return new Date(year, month - 1, day).toLocaleDateString();
                 })()}</span>
               </div>
-              <div class="info-row">
-                <span class="info-label">Days Remaining</span>
-                <span class="info-value days-remaining ${daysClass}">${daysRemaining >= 0 ? daysRemaining : 'EXPIRED'}</span>
+              <div class="info-row" style="display:flex; flex-direction:column; padding:0; overflow:hidden; gap:0;">
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:0.5rem;">
+                  <span class="info-label">Days Remaining</span>
+                  <span class="info-value days-remaining ${daysClass}">${daysRemaining >= 0 ? daysRemaining : 'EXPIRED'}</span>
+                </div>
+                ${(() => {
+                  const prepDate  = new Date(buffer.datePrepared);
+                  const expDate   = new Date(buffer.expirationDate);
+                  const totalDays = Math.max(1, Math.round((expDate - prepDate) / 86400000));
+                  const pct       = status === 'expired'
+                    ? 0
+                    : Math.min(100, Math.max(0, Math.round((Math.max(0, daysRemaining) / totalDays) * 100)));
+                  const hue       = Math.round((pct / 100) * 120);
+                  const fillColor = status === 'expired' ? '#ef4444' : `hsl(${hue}, 85%, 45%)`;
+                  const trackBg   = status === 'expired' ? 'rgba(239,68,68,0.15)' : 'rgba(0,0,0,0.2)';
+                  const title     = status === 'expired' ? 'Expired' : `${pct}% of lifespan remaining · ${daysRemaining}d left`;
+                  return `<div title="${title}" style="height:4px; background:${trackBg}; width:100%;">
+                    <div style="height:100%; width:${pct}%; background:${fillColor}; transition:width 0.6s ease;"></div>
+                  </div>`;
+                })()}
               </div>
               <div class="info-row">
                 <span class="info-label">Storage</span>
@@ -2223,21 +2240,6 @@
                 <button class="btn btn-secondary btn-small" onclick="confirmDelete('${buffer.id}')">Delete</button>
               `}
             </div>
-            ${(() => {
-              const prepDate  = new Date(buffer.datePrepared);
-              const expDate   = new Date(buffer.expirationDate);
-              const totalDays = Math.max(1, Math.round((expDate - prepDate) / 86400000));
-              const pct       = status === 'expired'
-                ? 100
-                : Math.min(100, Math.max(0, Math.round(((totalDays - Math.max(0, daysRemaining)) / totalDays) * 100)));
-              // Gradient: green(120) at 0% → yellow(60) at 50% → red(0) at 100%
-              const hue       = Math.round(120 - (pct / 100) * 120);
-              const fillColor = status === 'expired' ? '#ef4444' : `hsl(${hue}, 85%, 45%)`;
-              const title     = status === 'expired' ? 'Expired' : `${pct}% of lifespan used · ${daysRemaining}d remaining`;
-              return `<div class="exp-progress-track" title="${title}" style="margin-top:0.6rem;">
-                <div class="exp-progress-fill" style="width:${pct}%; background:${fillColor};"></div>
-              </div>`;
-            })()}
           </div>
         `;
       }).join('');
