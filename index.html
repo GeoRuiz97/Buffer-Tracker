@@ -2165,7 +2165,7 @@
                   return new Date(year, month - 1, day).toLocaleDateString();
                 })()}</span>
               </div>
-              <div class="info-row" style="display:flex; flex-direction:column; padding:0; overflow:hidden; gap:0;">
+              <div style="display:flex; flex-direction:column; border-radius:8px; overflow:hidden; background:var(--bg-secondary); font-family:'JetBrains Mono',monospace; font-size:0.85rem;">
                 <div style="display:flex; justify-content:space-between; align-items:center; padding:0.5rem;">
                   <span class="info-label">Days Remaining</span>
                   <span class="info-value days-remaining ${daysClass}">${daysRemaining >= 0 ? daysRemaining : 'EXPIRED'}</span>
